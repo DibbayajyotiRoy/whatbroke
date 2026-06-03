@@ -1,0 +1,59 @@
+{
+  "name": "whatbroke",
+  "version": "0.1.0",
+  "description": "Terminal-side capture layer for local Node crashes: packages the error, the diff since it last worked, and a ranked guess at the responsible file — secrets scrubbed — and hands it to your coding agent over MCP.",
+  "type": "module",
+  "license": "SEE LICENSE IN LICENSE",
+  "author": "Dibbayajyoti Roy <dibbayajyoti@gmail.com> (https://dibbayajyoti.com)",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/DibbayajyotiRoy/whatbroke.git"
+  },
+  "bugs": {
+    "url": "https://github.com/DibbayajyotiRoy/whatbroke/issues"
+  },
+  "homepage": "https://github.com/DibbayajyotiRoy/whatbroke#readme",
+  "engines": {
+    "node": ">=20"
+  },
+  "bin": {
+    "whatbroke": "dist/cli.js"
+  },
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE"
+  ],
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "clean": "rm -rf dist",
+    "prepublishOnly": "npm run clean && npm run build",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "tsx --test \"src/**/*.test.ts\"",
+    "dev": "tsx src/cli.ts"
+  },
+  "keywords": [
+    "bug",
+    "crash",
+    "stack-trace",
+    "repro",
+    "mcp",
+    "git",
+    "cli",
+    "debugging"
+  ],
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.0.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.0.0",
+    "tsx": "^4.19.0",
+    "typescript": "^5.6.0"
+  }
+}

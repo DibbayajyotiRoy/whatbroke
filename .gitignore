@@ -1,0 +1,10 @@
+node_modules/
+dist/
+.whatbroke/
+*.log
+
+# Local dev/testing/workflow helpers — kept out of the repo (see scratch/README.md).
+scratch/
+
+# Spec-driven build kit — kept local, not published to the repo.
+specs/
