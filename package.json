@@ -1,5 +1,5 @@
 {
-  "name": "whatbroke",
+  "name": "@whatbroke/whatbroke",
   "version": "0.1.0",
   "description": "Terminal-side capture layer for local Node crashes: packages the error, the diff since it last worked, and a ranked guess at the responsible file — secrets scrubbed — and hands it to your coding agent over MCP.",
   "type": "module",
@@ -13,6 +13,9 @@
     "url": "https://github.com/DibbayajyotiRoy/whatbroke/issues"
   },
   "homepage": "https://github.com/DibbayajyotiRoy/whatbroke#readme",
+  "publishConfig": {
+    "access": "public"
+  },
   "engines": {
     "node": ">=20"
   },
