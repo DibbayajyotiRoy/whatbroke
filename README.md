@@ -15,13 +15,13 @@ whatbroke works **alongside** Sentry, Jam, and Replay — it fills the local-ter
 Zero config. Just wrap whatever command you already run:
 
 ```sh
-npx @whatbroke/whatbroke run -- npm test
+npx whatbroke run -- npm test
 ```
 
-Or install once for the short `whatbroke` command:
+Or install once:
 
 ```sh
-npm i -g @whatbroke/whatbroke
+npm i -g whatbroke
 whatbroke run -- npm test
 ```
 
@@ -134,7 +134,7 @@ Add a representative `mcpServers` entry pointing at `whatbroke mcp`, launched fr
   "mcpServers": {
     "whatbroke": {
       "command": "npx",
-      "args": ["@whatbroke/whatbroke", "mcp"],
+      "args": ["whatbroke", "mcp"],
       "cwd": "/absolute/path/to/your/project"
     }
   }
