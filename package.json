@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "description": "Terminal-side capture layer for local Node crashes: packages the error, the diff since it last worked, and a ranked guess at the responsible file — secrets scrubbed — and hands it to your coding agent over MCP.",
   "type": "module",
-  "license": "SEE LICENSE IN LICENSE",
+  "license": "Apache-2.0",
   "author": "Dibbayajyoti Roy <dibbayajyoti@gmail.com> (https://dibbayajyoti.com)",
   "repository": {
     "type": "git",
