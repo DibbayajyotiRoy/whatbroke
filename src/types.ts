@@ -28,6 +28,12 @@ export interface Bundle {
   createdAt: string; // ISO-8601
   tool: { name: string; version: string };
 
+  /**
+   * The language/ecosystem adapter that interpreted this crash ('node',
+   * 'python', 'go', ... or 'unknown'). Additive in v0.2; older bundles omit it.
+   */
+  language: string;
+
   crash: CrashInfo;
   environment: EnvInfo;
   dependencies: DepInfo;
@@ -75,13 +81,24 @@ export interface StackFrame {
   sourceMapped: boolean; // true if resolved through a .map (v1.5)
 }
 
+/**
+ * Known test runners, kept as literals for autocomplete, but open to any string
+ * so language adapters (pytest, go-test, cargo-test, ...) can register their own
+ * without a type change. The `(string & {})` member preserves the literal hints.
+ */
 export type TestRunner =
   | 'jest'
   | 'vitest'
   | 'mocha'
   | 'node:test'
   | 'playwright'
-  | 'unknown';
+  | 'pytest'
+  | 'go-test'
+  | 'cargo-test'
+  | 'rspec'
+  | 'junit'
+  | 'unknown'
+  | (string & {});
 
 export interface TestFailure {
   runner: TestRunner;
@@ -93,7 +110,18 @@ export interface TestFailure {
 
 export interface EnvInfo {
   os: { platform: string; release: string; arch: string };
-  runtime: { node: string; v8?: string };
+  runtime: {
+    /** Runtime identity: 'node' | 'python' | 'go' | ... */
+    name: string;
+    /** Runtime version, or '' when undetectable. */
+    version: string;
+    /** Extra ecosystem details (e.g. { v8 }, { goos, goarch }). */
+    details?: Record<string, string>;
+    /** @deprecated prefer name/version; retained so Node bundles/tests keep `runtime.node`. */
+    node?: string;
+    /** @deprecated prefer details.v8. */
+    v8?: string;
+  };
   packageManager: {
     name: 'npm' | 'pnpm' | 'yarn' | 'bun' | 'unknown';
     version: string | null;
@@ -113,7 +141,14 @@ export interface DepInfo {
     | 'pnpm-lock'
     | 'yarn.lock'
     | 'bun.lockb'
-    | 'none';
+    | 'requirements'
+    | 'pipfile'
+    | 'poetry'
+    | 'go.sum'
+    | 'none'
+    | (string & {});
+  /** Manifest file that declared the deps, when known (package.json, go.mod, ...). */
+  manifest?: string;
 }
 
 export interface ChangedFile {

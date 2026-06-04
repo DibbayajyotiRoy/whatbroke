@@ -1,0 +1,113 @@
+name: Release
+
+# Auto-releases @whatbroke/whatbroke to npm when the version in package.json
+# changes to one that has not been tagged yet.
+#
+# How to cut a release (the whole flow):
+#   1. Bump "version" in package.json (e.g. 0.1.1 -> 0.2.0).
+#   2. Commit + merge to main.
+#   3. This workflow runs, sees no `v0.2.0` git tag, and then:
+#        - reruns typecheck + tests + build,
+#        - creates and pushes the `v0.2.0` tag,
+#        - `npm publish` with provenance,
+#        - opens a GitHub Release with auto-generated notes.
+#   If the version is unchanged (tag already exists) it no-ops, so ordinary
+#   package.json edits (deps, scripts) never publish by accident.
+#
+# One-time setup:
+#   1. Create a granular npm access token (npmjs.com → Access Tokens →
+#      Generate New Token → Granular Access Token):
+#        - Scope: @whatbroke (read + write), Allow bypass 2FA: ON.
+#   2. Add it as a repo secret: Settings → Secrets and variables → Actions →
+#      New repository secret → Name: NPM_TOKEN, Value: the npm_... token.
+#
+# What you get: npm provenance — the npm page shows "Built and signed on GitHub
+# Actions" with a cryptographic link back to this exact commit + workflow run.
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'package.json'
+
+concurrency:
+  group: release-main
+  cancel-in-progress: false
+
+permissions:
+  contents: write   # create + push the tag and the GitHub Release
+  id-token: write   # required for npm provenance (sigstore attestation)
+
+jobs:
+  release:
+    name: build + publish + provenance
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0   # need full tag history to detect a new version
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          registry-url: 'https://registry.npmjs.org'
+          cache: 'npm'
+
+      - name: Detect version and whether it is new
+        id: ver
+        run: |
+          VERSION=$(node -p "require('./package.json').version")
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          if git rev-parse "v$VERSION" >/dev/null 2>&1; then
+            echo "new=false" >> "$GITHUB_OUTPUT"
+            echo "::notice::v$VERSION is already tagged — nothing to release."
+          else
+            echo "new=true" >> "$GITHUB_OUTPUT"
+            echo "::notice::Releasing v$VERSION"
+          fi
+
+      - name: Install dependencies
+        if: steps.ver.outputs.new == 'true'
+        run: npm ci
+
+      - name: Typecheck
+        if: steps.ver.outputs.new == 'true'
+        run: npm run typecheck
+
+      - name: Test (full suite)
+        if: steps.ver.outputs.new == 'true'
+        run: npm test
+
+      - name: Build
+        if: steps.ver.outputs.new == 'true'
+        run: npm run build
+
+      # Publish BEFORE tagging: npm publish is the irreversible step (and npm
+      # itself rejects a duplicate version), so if it fails — e.g. NPM_TOKEN not
+      # set yet — no dangling tag is left and the run is cleanly retryable.
+      - name: Publish to npm (with provenance)
+        if: steps.ver.outputs.new == 'true'
+        run: npm publish --provenance --access public
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+
+      - name: Create and push tag
+        if: steps.ver.outputs.new == 'true'
+        run: |
+          git tag "v${{ steps.ver.outputs.version }}"
+          git push origin "v${{ steps.ver.outputs.version }}"
+
+      - name: Create GitHub Release
+        if: steps.ver.outputs.new == 'true'
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: v${{ steps.ver.outputs.version }}
+          name: v${{ steps.ver.outputs.version }}
+          generate_release_notes: true
+          body: |
+            `@whatbroke/whatbroke@${{ steps.ver.outputs.version }}` published to npm.
+
+            Install: `npx @whatbroke/whatbroke run -- <command>`
+
+            Built and signed on GitHub Actions
+            ([npm provenance](https://docs.npmjs.com/generating-provenance-statements)).

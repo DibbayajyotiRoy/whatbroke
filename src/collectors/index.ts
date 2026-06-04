@@ -13,17 +13,18 @@ import type {
   StackFrame,
 } from '../types.js';
 import type { Journal } from '../journal/journal.js';
-import { collectEnv } from './env.js';
-import { collectDeps } from './deps.js';
+import type { LanguageAdapter } from '../adapters/types.js';
+import { nodeAdapter } from '../adapters/node/index.js';
 import { collectGit } from './git.js';
 import { gitDiffProvider } from './gitDiffProvider.js';
-import { parseTestFailure } from './testRunners/index.js';
 
 export interface CollectInput {
   command: CommandSpec;
   journal: Journal;
   frames: StackFrame[];
   logs: LogBuffer;
+  /** The selected language adapter. Defaults to the Node adapter. */
+  adapter?: LanguageAdapter;
 }
 
 const NOT_A_REPO: GitInfo = {
@@ -40,7 +41,7 @@ const NOT_A_REPO: GitInfo = {
 function emptyEnv(cwd: string): EnvInfo {
   return {
     os: { platform: process.platform, release: '', arch: process.arch },
-    runtime: { node: process.versions.node },
+    runtime: { name: 'node', version: process.versions.node, node: process.versions.node },
     packageManager: { name: 'unknown', version: null },
     envKeys: [],
     envValues: {},
@@ -56,11 +57,12 @@ const EMPTY_DEPS: DepInfo = {
 
 export async function collectAll(input: CollectInput): Promise<RawContext> {
   const { command, journal, frames, logs } = input;
+  const adapter = input.adapter ?? nodeAdapter;
   const collectorErrors: RawContext['collectorErrors'] = [];
 
   const [envR, depsR, gitR] = await Promise.allSettled([
-    collectEnv(command.cwd),
-    collectDeps(command.cwd, frames),
+    adapter.collectEnv(command.cwd),
+    adapter.collectDeps(command.cwd, frames),
     collectGit(command, journal, gitDiffProvider),
   ]);
 
@@ -90,7 +92,7 @@ export async function collectAll(input: CollectInput): Promise<RawContext> {
 
   let testFailure: RawContext['testFailure'];
   try {
-    testFailure = parseTestFailure(logs) ?? undefined;
+    testFailure = adapter.parseTestFailure(logs) ?? undefined;
   } catch (err) {
     collectorErrors.push({ collector: 'test-runner', error: String(err) });
   }

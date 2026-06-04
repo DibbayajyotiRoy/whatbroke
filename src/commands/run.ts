@@ -22,6 +22,7 @@ import {
   getGitRoot,
   gitHeadAndBranch,
 } from '../assemble.js';
+import { buildDetectionContext, selectAdapter } from '../adapters/index.js';
 import { bundleId } from '../ids.js';
 import { resolveStorePaths, ensureStore, ensureGitignore } from '../paths.js';
 import { loadConfig, applyCliOverrides } from '../config.js';
@@ -96,18 +97,35 @@ export async function runCmd(args: RunArgs): Promise<number> {
     return capture.exitCode ?? 0;
   }
 
-  // ── Crash path: assemble → redact → sinks ────────────────────────────────────
+  // ── Crash path: detect stack → assemble → redact → sinks ─────────────────────
+  // Pick the language adapter from the command + cwd + captured stderr, then
+  // re-derive the crash through it (the Node-default classification from capture
+  // is a fallback; for Python/Go this parses the real traceback/panic).
+  const detectionCtx = await buildDetectionContext(command, capture.logs);
+  const adapter = selectAdapter(detectionCtx);
+  const stderrText = capture.logs.stderrTail;
+  const adapterError = adapter.parseError(stderrText);
+  const reclassified = adapter.classify({
+    exitCode: capture.exitCode,
+    signal: capture.signal,
+    stderrText,
+    error: adapterError,
+  });
+  const crash = reclassified ?? capture.crash;
+
   // Collect git context BEFORE whatbroke writes its own .gitignore entry, so our
   // setup edit never shows up as a "changed since green" file or a suspect.
   const gitRoot = await getGitRoot(args.cwd);
-  const crash = capture.crash;
-  if (crash.error) crash.error.stack = enrichFrames(crash.error.stack, gitRoot);
+  if (crash.error) {
+    crash.error.stack = enrichFrames(crash.error.stack, gitRoot, args.cwd);
+  }
 
   const context = await collectAll({
     command,
     journal,
     frames: crash.error?.stack ?? [],
     logs: capture.logs,
+    adapter,
   });
   for (const ce of context.collectorErrors) {
     log.verbose(`whatbroke: collector '${ce.collector}' degraded: ${ce.error}`);
@@ -122,6 +140,7 @@ export async function runCmd(args: RunArgs): Promise<number> {
     context,
     logs: capture.logs,
     repro,
+    language: adapter.id,
   });
 
   const redacted = redact(bundle, {

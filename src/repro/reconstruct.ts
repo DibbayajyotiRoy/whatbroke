@@ -116,7 +116,10 @@ export function reconstruct(input: ReproInput): ReproInfo {
   // ── 3. Environment notes (observed) ─────────────────────────────────────
   const env = context.env;
   const notes: string[] = [];
-  if (env.runtime.node) {
+  if (env.runtime.name && env.runtime.version) {
+    const label = env.runtime.name === 'node' ? 'Node' : env.runtime.name;
+    notes.push(`${label} ${env.runtime.version}`);
+  } else if (env.runtime.node) {
     notes.push(`Node ${env.runtime.node}`);
   }
   if (env.packageManager.name !== 'unknown') {

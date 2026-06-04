@@ -59,9 +59,15 @@ export async function collectEnv(cwd: string): Promise<EnvInfo> {
   const name = await detectPmName(cwd);
   const version = await resolvePmVersion(name);
 
-  const runtime: EnvInfo['runtime'] = { node: process.versions.node };
+  const runtime: EnvInfo['runtime'] = {
+    name: 'node',
+    version: process.versions.node,
+    // Deprecated aliases kept for back-compat with existing Node bundles/readers.
+    node: process.versions.node,
+  };
   if (process.versions.v8) {
     runtime.v8 = process.versions.v8;
+    runtime.details = { v8: process.versions.v8 };
   }
 
   return {

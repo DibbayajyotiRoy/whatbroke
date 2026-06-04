@@ -1,0 +1,43 @@
+name: CI
+
+# Runs on every push and PR to main: typecheck, the full test suite, and a build,
+# across Node 20 and 22. This is the gate; the Release workflow re-runs it before
+# publishing so nothing ships red.
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    name: typecheck + test + build
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        node: ['20', '22']
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node }}
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Typecheck
+        run: npm run typecheck
+
+      - name: Test (full suite)
+        run: npm test
+
+      - name: Build
+        run: npm run build

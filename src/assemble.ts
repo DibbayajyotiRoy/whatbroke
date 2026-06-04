@@ -40,12 +40,21 @@ export async function getGitRoot(cwd: string): Promise<string | null> {
  * Fill `isInRepo` + `fileRelative` on stack frames now that the repo root is
  * known. Capture (03) leaves these as false/null by design.
  */
-export function enrichFrames(frames: StackFrame[], gitRoot: string | null): StackFrame[] {
+export function enrichFrames(
+  frames: StackFrame[],
+  gitRoot: string | null,
+  cwd?: string,
+): StackFrame[] {
   if (!gitRoot) return frames;
   const root = path.resolve(gitRoot);
+  const base = cwd ? path.resolve(cwd) : process.cwd();
   return frames.map((frame) => {
     if (!frame.file) return frame;
-    const abs = path.resolve(frame.file);
+    // Resolve cwd-relative frame paths (some runners print them) against the
+    // command cwd, not whatbroke's own cwd. Absolute paths are unaffected.
+    const abs = path.isAbsolute(frame.file)
+      ? path.resolve(frame.file)
+      : path.resolve(base, frame.file);
     const rel = path.relative(root, abs);
     const inRepo = rel.length > 0 && !rel.startsWith('..') && !path.isAbsolute(rel);
     if (!inRepo) return frame;
@@ -85,6 +94,8 @@ export interface AssembleParts {
   context: RawContext;
   logs: LogBuffer;
   repro: ReproInfo;
+  /** The language adapter id that interpreted the crash. */
+  language?: string;
 }
 
 export function assembleBundle(parts: AssembleParts): Bundle {
@@ -94,6 +105,7 @@ export function assembleBundle(parts: AssembleParts): Bundle {
     id,
     createdAt,
     tool: { name: TOOL_NAME, version: TOOL_VERSION },
+    language: parts.language ?? 'node',
     crash: toCrashInfo(crash, context),
     environment: context.env,
     dependencies: context.deps,

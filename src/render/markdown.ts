@@ -189,8 +189,14 @@ function renderTestFailure(crash: CrashInfo): string | null {
 function renderEnvironment(env: EnvInfo): string {
   const lines: string[] = [];
   lines.push(`- **OS**: ${env.os.platform} ${env.os.release} (${env.os.arch})`);
-  const v8 = env.runtime.v8 ? `, v8 ${env.runtime.v8}` : '';
-  lines.push(`- **Runtime**: node ${env.runtime.node}${v8}`);
+  const v8val = env.runtime.details?.v8 ?? env.runtime.v8;
+  const v8 = v8val ? `, v8 ${v8val}` : '';
+  // Prefer name/version; fall back to the deprecated `node` alias so bundles
+  // written before v0.2 still render.
+  const rtName = env.runtime.name || (env.runtime.node ? 'node' : 'unknown');
+  const rtVersion = env.runtime.version || env.runtime.node || '';
+  const version = rtVersion ? ` ${rtVersion}` : '';
+  lines.push(`- **Runtime**: ${rtName}${version}${v8}`);
   const pmVersion = env.packageManager.version ?? 'unknown';
   lines.push(`- **Package manager**: ${env.packageManager.name} ${pmVersion}`);
   lines.push(`- **cwd**: \`${env.cwd}\``);

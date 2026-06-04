@@ -54,7 +54,7 @@ export function classifyCrash(args: {
   return crash;
 }
 
-function isUncaughtException(stderr: string): boolean {
+export function isUncaughtException(stderr: string): boolean {
   // Node prints lines like:
   //   `node:internal/process/...` followed by the error, and on newer versions
   //   an explicit banner. Match the common markers.
@@ -66,7 +66,7 @@ function isUncaughtException(stderr: string): boolean {
   return /^\s*[\w$.]*Error:.*$/m.test(stderr) && /^\s*at\s/m.test(stderr);
 }
 
-function isUnhandledRejection(stderr: string): boolean {
+export function isUnhandledRejection(stderr: string): boolean {
   return (
     stderr.includes('UnhandledPromiseRejection') ||
     stderr.includes('unhandledRejection') ||
