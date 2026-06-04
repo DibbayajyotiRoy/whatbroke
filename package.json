@@ -38,7 +38,7 @@
     "clean": "rm -rf dist",
     "prepublishOnly": "npm run clean && npm run build",
     "typecheck": "tsc -p tsconfig.json --noEmit",
-    "test": "tsx --test \"src/**/*.test.ts\"",
+    "test": "tsx --test $(find src -name '*.test.ts')",
     "dev": "tsx src/cli.ts"
   },
   "keywords": [
