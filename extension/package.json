@@ -1,0 +1,129 @@
+{
+  "name": "whatbroke-vscode",
+  "displayName": "whatbroke",
+  "version": "0.1.0",
+  "description": "Read-only viewer for whatbroke crash bundles: surfaces the latest crash, ranked suspects, diff-since-green, and logs inside VS Code. The brain stays in the CLI — this extension computes nothing.",
+  "publisher": "dibbayajyoti",
+  "license": "Apache-2.0",
+  "author": "Dibbayajyoti Roy <dibbayajyoti@gmail.com> (https://dibbayajyoti.com)",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/DibbayajyotiRoy/whatbroke.git",
+    "directory": "extension"
+  },
+  "homepage": "https://github.com/DibbayajyotiRoy/whatbroke#readme",
+  "bugs": {
+    "url": "https://github.com/DibbayajyotiRoy/whatbroke/issues"
+  },
+  "engines": {
+    "vscode": "^1.85.0"
+  },
+  "categories": [
+    "Other",
+    "Debuggers"
+  ],
+  "keywords": [
+    "whatbroke",
+    "crash",
+    "stack-trace",
+    "debugging",
+    "suspect"
+  ],
+  "icon": "media/icon.png",
+  "main": "./dist/extension.js",
+  "activationEvents": [
+    "workspaceContains:**/.whatbroke/bundles"
+  ],
+  "contributes": {
+    "viewsContainers": {
+      "activitybar": [
+        {
+          "id": "whatbroke",
+          "title": "whatbroke",
+          "icon": "media/activity.svg"
+        }
+      ]
+    },
+    "views": {
+      "whatbroke": [
+        {
+          "id": "whatbroke.bundle",
+          "name": "Latest crash",
+          "contextualTitle": "whatbroke",
+          "icon": "media/activity.svg"
+        }
+      ]
+    },
+    "viewsWelcome": [
+      {
+        "view": "whatbroke.bundle",
+        "contents": "No whatbroke crash bundle found yet.\n\nRun a command through whatbroke and the latest crash will appear here:\n\n$(terminal) `npx whatbroke run -- npm test`\n\n[Refresh](command:whatbroke.refresh)"
+      }
+    ],
+    "commands": [
+      {
+        "command": "whatbroke.refresh",
+        "title": "whatbroke: Refresh",
+        "icon": "$(refresh)"
+      },
+      {
+        "command": "whatbroke.openLatestBundle",
+        "title": "whatbroke: Open latest bundle (JSON)"
+      },
+      {
+        "command": "whatbroke.openAsMarkdown",
+        "title": "whatbroke: Open latest bundle as Markdown"
+      },
+      {
+        "command": "whatbroke.fileGithubIssue",
+        "title": "whatbroke: File GitHub issue from latest bundle"
+      },
+      {
+        "command": "whatbroke.openDiffVsGreen",
+        "title": "whatbroke: Open diff vs green"
+      }
+    ],
+    "menus": {
+      "view/title": [
+        {
+          "command": "whatbroke.refresh",
+          "when": "view == whatbroke.bundle",
+          "group": "navigation"
+        }
+      ]
+    },
+    "configuration": {
+      "title": "whatbroke",
+      "properties": {
+        "whatbroke.diagnostics.enabled": {
+          "type": "boolean",
+          "default": true,
+          "description": "Push a Problems-panel diagnostic onto the top suspect's stack line for the latest crash."
+        },
+        "whatbroke.codeLens.enabled": {
+          "type": "boolean",
+          "default": true,
+          "description": "Show a CodeLens above the top suspect's stack line for the latest crash."
+        },
+        "whatbroke.statusBar.enabled": {
+          "type": "boolean",
+          "default": true,
+          "description": "Show whatbroke's green / crashed status in the status bar."
+        }
+      }
+    }
+  },
+  "scripts": {
+    "vscode:prepublish": "npm run build",
+    "build": "tsc -p tsconfig.json",
+    "watch": "tsc -p tsconfig.json --watch",
+    "typecheck": "tsc -p tsconfig.json --noEmit"
+  },
+  "devDependencies": {
+    "@types/node": "^20.0.0",
+    "@types/vscode": "^1.85.0",
+    "@vscode/vsce": "^3.9.2",
+    "ovsx": "^1.0.0",
+    "typescript": "^5.6.0"
+  }
+}
