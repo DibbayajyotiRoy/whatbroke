@@ -1,0 +1,17 @@
+{
+  "name": "esm-mjs-throw",
+  "language": "node",
+  "culprits": [
+    "main.mjs"
+  ],
+  "argv": [
+    "node",
+    "main.mjs"
+  ],
+  "greenFiles": {
+    "main.mjs": "export function boot() {\n  return 'ok';\n}\nconsole.log(boot());\n"
+  },
+  "brokenFiles": {
+    "main.mjs": "export function boot() {\n  throw new Error('esm boot failure');\n}\nconsole.log(boot());\n"
+  }
+}

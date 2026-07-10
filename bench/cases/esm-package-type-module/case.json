@@ -1,0 +1,19 @@
+{
+  "name": "esm-package-type-module",
+  "language": "node",
+  "culprits": [
+    "lib/data.js"
+  ],
+  "argv": [
+    "node",
+    "main.js"
+  ],
+  "greenFiles": {
+    "package.json": "{\n  \"name\": \"fixture-esm\",\n  \"private\": true,\n  \"type\": \"module\"\n}\n",
+    "main.js": "import { load } from './lib/data.js';\nconsole.log(load());\n",
+    "lib/data.js": "export function load() {\n  return 'data ready';\n}\n"
+  },
+  "brokenFiles": {
+    "lib/data.js": "export function load() {\n  throw new Error('data source offline');\n}\n"
+  }
+}

@@ -1,0 +1,17 @@
+{
+  "name": "typeerror-undefined-prop",
+  "language": "node",
+  "culprits": [
+    "main.js"
+  ],
+  "argv": [
+    "node",
+    "main.js"
+  ],
+  "greenFiles": {
+    "main.js": "const user = { name: 'ada', role: 'admin' };\nconsole.log(user.name.length);\n"
+  },
+  "brokenFiles": {
+    "main.js": "const user = { role: 'admin' };\nconsole.log(user.name.length);\n"
+  }
+}

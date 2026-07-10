@@ -1,0 +1,18 @@
+{
+  "name": "helper-throw-surfaces-in-entry",
+  "language": "node",
+  "culprits": [
+    "lib/helper.js"
+  ],
+  "argv": [
+    "node",
+    "main.js"
+  ],
+  "greenFiles": {
+    "main.js": "const { greet } = require('./lib/helper.js');\nconsole.log(greet('ada'));\n",
+    "lib/helper.js": "function greet(name) {\n  return 'hello ' + name;\n}\nmodule.exports = { greet };\n"
+  },
+  "brokenFiles": {
+    "lib/helper.js": "function greet(name) {\n  throw new TypeError('name must be lowercase: ' + name);\n}\nmodule.exports = { greet };\n"
+  }
+}

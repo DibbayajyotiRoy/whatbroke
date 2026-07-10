@@ -1,0 +1,18 @@
+{
+  "name": "call-missing-method",
+  "language": "node",
+  "culprits": [
+    "main.js"
+  ],
+  "argv": [
+    "node",
+    "main.js"
+  ],
+  "greenFiles": {
+    "main.js": "const store = require('./lib/store.js');\nconsole.log(store.readAll().length);\n",
+    "lib/store.js": "module.exports = { readAll: () => ['a', 'b'] };\n"
+  },
+  "brokenFiles": {
+    "main.js": "const store = require('./lib/store.js');\nconsole.log(store.readEvery().length);\n"
+  }
+}

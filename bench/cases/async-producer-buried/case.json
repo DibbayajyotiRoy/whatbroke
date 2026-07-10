@@ -1,0 +1,21 @@
+{
+  "name": "async-producer-buried",
+  "language": "node",
+  "expectedMiss": true,
+  "culprits": [
+    "send.js"
+  ],
+  "argv": [
+    "node",
+    "send.js"
+  ],
+  "greenFiles": {
+    "send.js": "const { enqueue } = require('./lib/queue.js');\nenqueue({ kind: 'email', payload: { to: 'ops@example.com' } });\n",
+    "lib/queue.js": "const { handle } = require('./worker.js');\nfunction enqueue(task) {\n  setImmediate(() => handle(task));\n}\nmodule.exports = { enqueue };\n",
+    "lib/worker.js": "const { checkTask } = require('./schema.js');\nfunction handle(task) {\n  checkTask(task);\n  console.log('handled', task.kind);\n}\nmodule.exports = { handle };\n",
+    "lib/schema.js": "function checkTask(task) {\n  return task.payload.to.trim();\n}\nmodule.exports = { checkTask };\n"
+  },
+  "brokenFiles": {
+    "send.js": "const { enqueue } = require('./lib/queue.js');\nenqueue({ kind: 'email' });\n"
+  }
+}

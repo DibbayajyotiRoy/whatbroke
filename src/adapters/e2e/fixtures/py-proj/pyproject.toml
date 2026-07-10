@@ -1,0 +1,7 @@
+# Pytest config for the e2e fixture. The two options make a crashing worker
+# thread print CPython's own `Traceback (most recent call last):` block to the
+# process's real stderr — the stream whatbroke's pipeline parses:
+#   -s                      disable pytest's output capture
+#   -p no:threadexception   keep pytest from intercepting threading.excepthook
+[tool.pytest.ini_options]
+addopts = "-s -p no:threadexception"

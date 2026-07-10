@@ -1,0 +1,18 @@
+{
+  "name": "assertion-script-changed",
+  "language": "node",
+  "culprits": [
+    "checks.js"
+  ],
+  "argv": [
+    "node",
+    "checks.js"
+  ],
+  "greenFiles": {
+    "checks.js": "const assert = require('node:assert');\nconst { total } = require('./lib/cart.js');\nassert.strictEqual(total([2, 3]), 5);\nconsole.log('checks passed');\n",
+    "lib/cart.js": "module.exports = { total: (xs) => xs.reduce((a, b) => a + b, 0) };\n"
+  },
+  "brokenFiles": {
+    "checks.js": "const assert = require('node:assert');\nconst { total } = require('./lib/cart.js');\nassert.strictEqual(total([2, 3]), 6);\nconsole.log('checks passed');\n"
+  }
+}

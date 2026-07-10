@@ -7,6 +7,7 @@
  * Output goes to stdout (it's meant to be copied); it is read-only and never
  * throws — a broken environment is exactly when you need this to work.
  */
+import * as path from 'node:path';
 import { collectEnv } from '../collectors/env.js';
 import { openJournal } from '../journal/journal.js';
 import { BundleStore } from '../mcp/store.js';
@@ -14,10 +15,20 @@ import { resolveStorePaths } from '../paths.js';
 import { gitHeadAndBranch, getGitRoot } from '../assemble.js';
 import { TOOL_VERSION, ISSUES_URL } from '../version.js';
 import { makeStyle } from '../util/log.js';
+import {
+  findMcpRegistration,
+  smokeTestMcp,
+  DEFAULT_SMOKE_ARGV,
+  MCP_SERVER_KEY,
+} from './init.js';
 
 export interface DoctorArgs {
   cwd: string;
   out?: string;
+  /** Override the argv used for the MCP boot check (tests inject a stub). */
+  smokeArgv?: string[];
+  /** Override the MCP boot-check timeout in ms (default 5000). */
+  smokeTimeoutMs?: number;
 }
 
 export async function doctorCmd(args: DoctorArgs): Promise<number> {
@@ -80,6 +91,32 @@ export async function doctorCmd(args: DoctorArgs): Promise<number> {
     }
   } catch {
     row('bundles', 'unreadable');
+  }
+
+  // Agent-registration health (roadmap 6.1): is whatbroke registered in a
+  // project MCP config, and does the server actually boot? The boot check is
+  // best-effort — a missing npx or a timeout is a warning, never a failure.
+  try {
+    const reg = await findMcpRegistration(args.cwd);
+    row(
+      'mcp reg',
+      reg
+        ? `${path.relative(args.cwd, reg.file) || reg.file} (${reg.topKey}.${MCP_SERVER_KEY})`
+        : 'not registered — run `whatbroke init`',
+    );
+  } catch {
+    row('mcp reg', 'unknown');
+  }
+
+  try {
+    const smoke = await smokeTestMcp(
+      args.smokeArgv ?? DEFAULT_SMOKE_ARGV,
+      args.cwd,
+      args.smokeTimeoutMs ?? 5000,
+    );
+    row('mcp start', smoke.ok ? `ok (${smoke.message})` : s.yellow(`warn: ${smoke.message}`));
+  } catch {
+    row('mcp start', 'unknown');
   }
 
   out.push('');

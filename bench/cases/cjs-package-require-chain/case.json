@@ -1,0 +1,19 @@
+{
+  "name": "cjs-package-require-chain",
+  "language": "node",
+  "culprits": [
+    "lib/util.js"
+  ],
+  "argv": [
+    "node",
+    "index.js"
+  ],
+  "greenFiles": {
+    "package.json": "{\n  \"name\": \"fixture-cjs\",\n  \"private\": true\n}\n",
+    "index.js": "const { clampSum } = require('./lib/util.js');\nconsole.log(clampSum([1, 2, 3], 10));\n",
+    "lib/util.js": "function clampSum(xs, limit) {\n  const sum = xs.reduce((a, b) => a + b, 0);\n  return Math.min(sum, limit);\n}\nmodule.exports = { clampSum };\n"
+  },
+  "brokenFiles": {
+    "lib/util.js": "function clampSum(xs, limit) {\n  const sum = xs.reduce((a, b) => a + b, 0);\n  if (sum > limit / 2) throw new RangeError('limit out of range: ' + sum);\n  return Math.min(sum, limit);\n}\nmodule.exports = { clampSum };\n"
+  }
+}

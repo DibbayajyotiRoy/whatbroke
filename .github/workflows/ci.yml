@@ -1,8 +1,9 @@
 name: CI
 
-# Runs on every push and PR to main: typecheck, the full test suite, and a build,
-# across Node 20 and 22. This is the gate; the Release workflow re-runs it before
-# publishing so nothing ships red.
+# Runs on every push and PR to main: typecheck, the full test suite (including
+# the Python/Go end-to-end goldens — toolchains installed below), a build, and
+# the suspect-ranking benchmark as a regression gate (ADR-0006). This is the
+# gate; the Release workflow re-runs it before publishing so nothing ships red.
 
 on:
   push:
@@ -30,6 +31,20 @@ jobs:
           node-version: ${{ matrix.node }}
           cache: 'npm'
 
+      # Polyglot e2e goldens (5.1) run for real here; they self-skip locally
+      # when the toolchains are absent.
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install pytest
+        run: python3 -m pip install --quiet pytest
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version: 'stable'
+          cache: false
+
       - name: Install dependencies
         run: npm ci
 
@@ -41,3 +56,28 @@ jobs:
 
       - name: Build
         run: npm run build
+
+  bench:
+    name: suspect-ranking benchmark gate
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      # Fails if top-3 accuracy drops below bench/baseline.json (ADR-0006).
+      - name: Benchmark (regression gate)
+        run: npm run bench:gate
+
+      - name: Upload scoreboard
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: bench-results
+          path: bench/results.json

@@ -1,0 +1,17 @@
+{
+  "name": "bad-regexp-entry",
+  "language": "node",
+  "culprits": [
+    "main.js"
+  ],
+  "argv": [
+    "node",
+    "main.js"
+  ],
+  "greenFiles": {
+    "main.js": "const pattern = new RegExp('^[a-z]+$');\nconsole.log(pattern.test('abc'));\n"
+  },
+  "brokenFiles": {
+    "main.js": "const pattern = new RegExp('^[a-z+$');\nconsole.log(pattern.test('abc'));\n"
+  }
+}

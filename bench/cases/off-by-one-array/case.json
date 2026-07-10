@@ -1,0 +1,17 @@
+{
+  "name": "off-by-one-array",
+  "language": "node",
+  "culprits": [
+    "main.js"
+  ],
+  "argv": [
+    "node",
+    "main.js"
+  ],
+  "greenFiles": {
+    "main.js": "const names = ['ada', 'grace', 'alan'];\nfor (let i = 0; i < names.length; i++) {\n  console.log(names[i].toUpperCase());\n}\n"
+  },
+  "brokenFiles": {
+    "main.js": "const names = ['ada', 'grace', 'alan'];\nfor (let i = 0; i <= names.length; i++) {\n  console.log(names[i].toUpperCase());\n}\n"
+  }
+}

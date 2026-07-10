@@ -159,6 +159,23 @@ export function redact(bundle: Bundle, opts: RedactOptions = {}): RedactedBundle
     ce.error = scrub(ce.error);
   }
 
+  // ── captured command (1.1): argv can carry secrets (--token=..., URLs) ──────
+  // Scrubbed WITHOUT the env-value detector: under npm/npx wrappers, env vars
+  // like npm_node_execpath hold the interpreter path that IS argv[0], and
+  // scrubbing it would corrupt the one thing `verify` must re-run verbatim.
+  // Known formats, denylist, and entropy still apply; if they fire, verify
+  // fails closed rather than executing a placeholder (see verify.ts).
+  if (cloned.command !== undefined) {
+    const argvChain: Detector[] = [
+      ...KNOWN_FORMAT_DETECTORS,
+      makeDenylistDetector(denyPatterns),
+    ];
+    if (entropyEnabled) argvChain.push(entropyDetector);
+    cloned.command.argv = cloned.command.argv.map((a) =>
+      scrubField(a, argvChain, report),
+    );
+  }
+
   // ── environment.envValues: start empty, repopulate ONLY allowlisted keys ──--
   // Allowlisted values are non-secret by definition; do NOT scrub them.
   const allowedValues: Record<string, string> = {};

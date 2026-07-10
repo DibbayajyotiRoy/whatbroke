@@ -1,0 +1,21 @@
+{
+  "name": "deep-stack-five-files",
+  "language": "node",
+  "culprits": [
+    "lib/stage4.js"
+  ],
+  "argv": [
+    "node",
+    "main.js"
+  ],
+  "greenFiles": {
+    "main.js": "const { s1 } = require('./lib/stage1.js');\nconsole.log(s1(4));\n",
+    "lib/stage1.js": "const { s2 } = require('./stage2.js');\nfunction s1(n) {\n  return s2(n) + 1;\n}\nmodule.exports = { s1 };\n",
+    "lib/stage2.js": "const { s3 } = require('./stage3.js');\nfunction s2(n) {\n  return s3(n) + 1;\n}\nmodule.exports = { s2 };\n",
+    "lib/stage3.js": "const { s4 } = require('./stage4.js');\nfunction s3(n) {\n  return s4(n) + 1;\n}\nmodule.exports = { s3 };\n",
+    "lib/stage4.js": "function s4(n) {\n  return n * 2;\n}\nmodule.exports = { s4 };\n"
+  },
+  "brokenFiles": {
+    "lib/stage4.js": "function s4(n) {\n  throw new RangeError('depth budget exceeded at ' + n);\n}\nmodule.exports = { s4 };\n"
+  }
+}

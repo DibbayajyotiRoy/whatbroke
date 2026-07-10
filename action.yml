@@ -1,0 +1,168 @@
+name: 'whatbroke'
+description: >-
+  Capture crashes in CI: wraps a command with `whatbroke run --ci`, and on
+  failure uploads the redacted crash bundle (.whatbroke/bundles/) as an
+  artifact and posts the rendered report to the job summary. On green
+  default-branch runs it records the commit into a cache-backed journal so PR
+  crashes get a real diff-vs-green baseline (ADR-0005).
+author: 'Dibbayajyoti Roy'
+branding:
+  icon: 'alert-octagon'
+  color: 'red'
+
+# QUOTING CONTRACT: `run` and `whatbroke-command` are interpolated into a bash
+# script and word-split by the shell — exactly like the `run:` line of a
+# normal workflow step. Keep `run` a single plain command ("npm test",
+# "node app.js"); shell operators inside it are interpreted by bash.
+
+inputs:
+  run:
+    description: >-
+      The command to wrap (e.g. "npm test"). Passed verbatim after
+      `whatbroke run --ci --` and word-split by bash.
+    required: true
+  working-directory:
+    description: >-
+      Directory to run the command in, relative to the workspace. The journal
+      and bundles live under `<working-directory>/.whatbroke/`.
+    required: false
+    default: '.'
+  journal-cache:
+    description: >-
+      Restore/save `.whatbroke/journal.json` through the actions cache so PR
+      crashes diff against the last green default-branch run (ADR-0005).
+      Set to 'false' to disable.
+    required: false
+    default: 'true'
+  artifact-name:
+    description: Name of the crash-bundle artifact uploaded on failure.
+    required: false
+    default: 'whatbroke-bundle'
+  node-version:
+    description: Node.js version used to run the whatbroke CLI.
+    required: false
+    default: '20'
+  whatbroke-command:
+    description: >-
+      Command that invokes the whatbroke CLI, word-split by bash. Override to
+      run a local build (this repo's selftest passes
+      "node <workspace>/dist/cli.js").
+    required: false
+    default: 'npx -y @whatbroke/whatbroke'
+
+outputs:
+  exit:
+    description: Exit code of the wrapped command ('0' when it succeeded).
+    value: ${{ steps.run.outputs.exit }}
+
+runs:
+  using: 'composite'
+  steps:
+    # ADR-0005, restore half: the primary key is per-branch; the restore-key is
+    # a PREFIX match, so it also matches the `...-<default_branch>-<run_id>`
+    # keys written by the save step below and returns the newest one — i.e. PR
+    # runs restore main's last green journal and whatbroke diffs against a real
+    # green baseline. A cache miss degrades gracefully to whatbroke's own
+    # merge-base fallback chain.
+    - id: restore
+      name: Restore whatbroke journal (green baseline)
+      if: inputs.journal-cache == 'true'
+      uses: actions/cache/restore@v4
+      with:
+        path: ${{ inputs.working-directory }}/.whatbroke/journal.json
+        key: whatbroke-journal-${{ runner.os }}-${{ github.ref_name }}
+        restore-keys: |
+          whatbroke-journal-${{ runner.os }}-${{ github.event.repository.default_branch }}
+
+    - id: node
+      name: Set up Node.js for the whatbroke CLI
+      uses: actions/setup-node@v4
+      with:
+        node-version: ${{ inputs.node-version }}
+
+    # Run the wrapped command under whatbroke. This step itself NEVER fails:
+    # the exit code is captured into the step output `exit` so the
+    # summary/artifact/journal steps below still run, and the final `gate`
+    # step re-raises the code so the job fails exactly like the raw command
+    # would have. Output is teed to a log so the summary step can surface the
+    # stable `::whatbroke bundle=... confidence=... suspect=...` line.
+    - id: run
+      name: Run command under whatbroke
+      shell: bash
+      working-directory: ${{ inputs.working-directory }}
+      run: |
+        set -o pipefail
+        code=0
+        ${{ inputs.whatbroke-command }} run --ci -- ${{ inputs.run }} 2>&1 | tee "$RUNNER_TEMP/whatbroke-run.log" || code=$?
+        echo "exit=$code" >> "$GITHUB_OUTPUT"
+
+    # On failure: append the newest rendered bundle to the job summary.
+    # Globbing .whatbroke/bundles/*.md is deliberately preferred over parsing
+    # the ::whatbroke line — it keeps working even if the line format evolves.
+    - id: summary
+      name: Post crash report to the job summary
+      if: steps.run.outputs.exit != '0'
+      shell: bash
+      working-directory: ${{ inputs.working-directory }}
+      run: |
+        exit_code='${{ steps.run.outputs.exit }}'
+        {
+          echo ''
+          echo "## whatbroke: wrapped command failed (exit ${exit_code})"
+          echo ''
+        } >> "$GITHUB_STEP_SUMMARY"
+        newest_md=''
+        if [ -d .whatbroke/bundles ]; then
+          newest_md=$(ls -t .whatbroke/bundles/*.md 2>/dev/null | head -n 1 || true)
+        fi
+        if [ -n "$newest_md" ]; then
+          # Cap well under GitHub's 1 MiB step-summary limit.
+          head -c 524288 "$newest_md" >> "$GITHUB_STEP_SUMMARY"
+          {
+            echo ''
+            echo ''
+            echo "_Full bundle (JSON + Markdown) uploaded as the \`${{ inputs.artifact-name }}\` artifact._"
+          } >> "$GITHUB_STEP_SUMMARY"
+        else
+          echo '_The command failed but no whatbroke bundle was written (it may have failed before whatbroke could capture anything)._' >> "$GITHUB_STEP_SUMMARY"
+        fi
+        # Re-echo the stable machine line into this step's log (greppable).
+        if [ -f "$RUNNER_TEMP/whatbroke-run.log" ]; then
+          grep -m 1 '^::whatbroke ' "$RUNNER_TEMP/whatbroke-run.log" || true
+        fi
+
+    - id: artifact
+      name: Upload crash bundle artifact
+      if: steps.run.outputs.exit != '0'
+      uses: actions/upload-artifact@v4
+      with:
+        name: ${{ inputs.artifact-name }}
+        path: ${{ inputs.working-directory }}/.whatbroke/bundles/
+        if-no-files-found: warn
+
+    # ADR-0005, save half: on a green default-branch run, save the journal
+    # (which whatbroke just stamped with this commit) as the new baseline.
+    # GitHub caches are immutable per key, so the key carries `github.run_id`
+    # to stay unique — otherwise only the FIRST green run would ever be
+    # recorded; the restore step above finds the newest via prefix match. A
+    # missing journal file only produces a cache warning, never a red job.
+    - id: save
+      name: Save whatbroke journal (record green baseline)
+      if: steps.run.outputs.exit == '0' && inputs.journal-cache == 'true' && github.ref_name == github.event.repository.default_branch
+      uses: actions/cache/save@v4
+      with:
+        path: ${{ inputs.working-directory }}/.whatbroke/journal.json
+        key: whatbroke-journal-${{ runner.os }}-${{ github.event.repository.default_branch }}-${{ github.run_id }}
+
+    # Re-raise the wrapped command's exit code LAST — after the bundle has
+    # been posted and uploaded — so the job fails exactly when the command
+    # failed, but never before the evidence is saved.
+    - id: gate
+      name: Propagate wrapped command exit code
+      shell: bash
+      run: |
+        code='${{ steps.run.outputs.exit }}'
+        if [ "${code:-1}" != "0" ]; then
+          echo "whatbroke: wrapped command exited with ${code:-unknown}; crash bundle uploaded as '${{ inputs.artifact-name }}'." >&2
+        fi
+        exit "${code:-1}"

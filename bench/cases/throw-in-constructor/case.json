@@ -1,0 +1,18 @@
+{
+  "name": "throw-in-constructor",
+  "language": "node",
+  "culprits": [
+    "lib/config.js"
+  ],
+  "argv": [
+    "node",
+    "main.js"
+  ],
+  "greenFiles": {
+    "main.js": "const { Config } = require('./lib/config.js');\nconsole.log(new Config({}).port);\n",
+    "lib/config.js": "class Config {\n  constructor(opts) {\n    this.port = opts.port || 3000;\n  }\n}\nmodule.exports = { Config };\n"
+  },
+  "brokenFiles": {
+    "lib/config.js": "class Config {\n  constructor(opts) {\n    if (!opts.port) throw new Error('port is required');\n    this.port = opts.port;\n  }\n}\nmodule.exports = { Config };\n"
+  }
+}

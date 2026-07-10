@@ -1,0 +1,20 @@
+{
+  "name": "multi-change-one-culprit",
+  "language": "node",
+  "culprits": [
+    "lib/rate.js"
+  ],
+  "argv": [
+    "node",
+    "main.js"
+  ],
+  "greenFiles": {
+    "main.js": "const { rate } = require('./lib/rate.js');\nconsole.log(rate(100));\n",
+    "lib/rate.js": "module.exports = { rate: (n) => n * 0.2 };\n",
+    "notes.txt": "release notes v1\n"
+  },
+  "brokenFiles": {
+    "lib/rate.js": "module.exports = { rate: (n) => n.amount.toFixed(2) };\n",
+    "notes.txt": "release notes v2\n"
+  }
+}

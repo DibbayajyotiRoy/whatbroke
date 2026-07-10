@@ -3,6 +3,13 @@ dist/
 .whatbroke/
 *.log
 
+# Claude Code tooling config (auto-generated permission allowlists with local
+# absolute paths — tooling, not product code).
+.claude/
+
+# Built extension package — rebuilt via `vsce package`, never committed.
+extension/*.vsix
+
 # Local dev/testing/workflow helpers — kept out of the repo (see scratch/README.md).
 scratch/
 

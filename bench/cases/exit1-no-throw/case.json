@@ -1,0 +1,17 @@
+{
+  "name": "exit1-no-throw",
+  "language": "node",
+  "culprits": [
+    "main.js"
+  ],
+  "argv": [
+    "node",
+    "main.js"
+  ],
+  "greenFiles": {
+    "main.js": "const ok = true;\nif (!ok) {\n  console.error('fatal: state check failed');\n  process.exit(1);\n}\nconsole.log('state ok');\n"
+  },
+  "brokenFiles": {
+    "main.js": "const ok = false;\nif (!ok) {\n  console.error('fatal: state check failed');\n  process.exit(1);\n}\nconsole.log('state ok');\n"
+  }
+}

@@ -1,0 +1,18 @@
+{
+  "name": "event-handler-throw",
+  "language": "node",
+  "culprits": [
+    "lib/bus.js"
+  ],
+  "argv": [
+    "node",
+    "main.js"
+  ],
+  "greenFiles": {
+    "main.js": "require('./lib/bus.js').start();\n",
+    "lib/bus.js": "const { EventEmitter } = require('node:events');\nfunction start() {\n  const bus = new EventEmitter();\n  bus.on('tick', (n) => console.log('tick', n));\n  bus.emit('tick', 1);\n}\nmodule.exports = { start };\n"
+  },
+  "brokenFiles": {
+    "lib/bus.js": "const { EventEmitter } = require('node:events');\nfunction start() {\n  const bus = new EventEmitter();\n  bus.on('tick', (n) => {\n    throw new Error('tick handler exploded: ' + n);\n  });\n  bus.emit('tick', 1);\n}\nmodule.exports = { start };\n"
+  }
+}

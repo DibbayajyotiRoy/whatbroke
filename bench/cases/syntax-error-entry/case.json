@@ -1,0 +1,17 @@
+{
+  "name": "syntax-error-entry",
+  "language": "node",
+  "culprits": [
+    "main.js"
+  ],
+  "argv": [
+    "node",
+    "main.js"
+  ],
+  "greenFiles": {
+    "main.js": "function total(a, b) {\n  return a + b;\n}\nconsole.log(total(1, 2));\n"
+  },
+  "brokenFiles": {
+    "main.js": "function total(a, b) {\n  return a + b;\n}\nconsole.log(total(1, 2);\n"
+  }
+}

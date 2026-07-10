@@ -19,6 +19,8 @@ import type {
   ReproInfo,
   StackFrame,
 } from './types.js';
+import { resolveFrames } from './capture/sourcemap.js';
+import type { SourceMapIO } from './capture/sourcemap.js';
 import { run } from './util/exec.js';
 import { TOOL_NAME, TOOL_VERSION } from './version.js';
 
@@ -39,16 +41,24 @@ export async function getGitRoot(cwd: string): Promise<string | null> {
 /**
  * Fill `isInRepo` + `fileRelative` on stack frames now that the repo root is
  * known. Capture (03) leaves these as false/null by design.
+ *
+ * Source-map resolution (roadmap 5.2) runs FIRST: frames pointing into build
+ * output (dist/ etc.) are rewritten to their original source (file/line/column,
+ * `sourceMapped: true`) so isInRepo/fileRelative/isUserCode describe the file
+ * the developer actually edits. Best-effort and offline — failures leave the
+ * raw frame untouched. `io` is a test seam; omit it for real fs access.
  */
 export function enrichFrames(
   frames: StackFrame[],
   gitRoot: string | null,
   cwd?: string,
+  io?: SourceMapIO,
 ): StackFrame[] {
-  if (!gitRoot) return frames;
+  const { frames: mapped } = resolveFrames(frames, io);
+  if (!gitRoot) return mapped;
   const root = path.resolve(gitRoot);
   const base = cwd ? path.resolve(cwd) : process.cwd();
-  return frames.map((frame) => {
+  return mapped.map((frame) => {
     if (!frame.file) return frame;
     // Resolve cwd-relative frame paths (some runners print them) against the
     // command cwd, not whatbroke's own cwd. Absolute paths are unaffected.

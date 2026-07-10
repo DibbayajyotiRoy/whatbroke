@@ -1,0 +1,21 @@
+{
+  "name": "constants-hop-removed-export",
+  "language": "node",
+  "expectedMiss": true,
+  "culprits": [
+    "lib/constants.js"
+  ],
+  "argv": [
+    "node",
+    "app.js"
+  ],
+  "greenFiles": {
+    "app.js": "const { runReport } = require('./lib/stage1.js');\nconsole.log(runReport([1.5, 2.25]));\n",
+    "lib/stage1.js": "const { formatRows } = require('./stage2.js');\nfunction runReport(rows) {\n  return formatRows(rows);\n}\nmodule.exports = { runReport };\n",
+    "lib/stage2.js": "const { PRECISION } = require('./constants.js');\nfunction formatRows(rows) {\n  const width = PRECISION.digits;\n  return rows.map(function fmt(r) { return r.toFixed(width); }).join('|');\n}\nmodule.exports = { formatRows };\n",
+    "lib/constants.js": "module.exports = { PRECISION: { digits: 2 } };\n"
+  },
+  "brokenFiles": {
+    "lib/constants.js": "module.exports = { OUTPUT: { digits: 2 } };\n"
+  }
+}

@@ -1,0 +1,112 @@
+name: whatbroke selftest
+
+# Dogfood proof for roadmap 2.1 AC2: run this repo's own composite action
+# (`uses: ./`) against an intentionally crashing fixture, using the LOCALLY
+# BUILT CLI (via the action's `whatbroke-command` input), then assert that
+# the action failed the wrapped step, captured a bundle (.json + .md — the
+# .md is what the action posted to the job summary), and uploaded the
+# artifact. The crash report is visible on this run's summary page.
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: whatbroke-selftest-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  selftest:
+    name: dogfood composite action
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build whatbroke (the local CLI under test)
+        run: npm run build
+
+      # A tiny git repo inside the workspace whose only script throws. Being
+      # its own repo keeps whatbroke's git collectors scoped to the fixture,
+      # not to this checkout.
+      - name: Create crashing fixture (its own git repo)
+        run: |
+          mkdir -p selftest-fixture
+          cd selftest-fixture
+          git init -q -b main
+          git config user.email 'selftest@whatbroke.invalid'
+          git config user.name 'whatbroke selftest'
+          cat > boom.js <<'EOF'
+          // Intentionally crashing fixture for the whatbroke action selftest.
+          function explode() {
+            throw new Error('selftest: intentional crash from boom.js');
+          }
+          explode();
+          EOF
+          git add boom.js
+          git commit -qm 'fixture: add crashing script'
+
+      # continue-on-error keeps the job alive so we can assert on the
+      # failure; the step's own outcome must still be 'failure' because the
+      # action's gate step re-raises the crash exit code.
+      - name: Run the action against the crashing fixture
+        id: wb
+        continue-on-error: true
+        uses: ./
+        with:
+          run: node boom.js
+          working-directory: selftest-fixture
+          whatbroke-command: node ${{ github.workspace }}/dist/cli.js
+          artifact-name: whatbroke-selftest-bundle
+
+      - name: Assert the action failed the step and captured the crash
+        run: |
+          outcome='${{ steps.wb.outcome }}'
+          if [ "$outcome" != "failure" ]; then
+            echo "::error::expected the whatbroke action step to fail (crash must propagate to the job), got outcome '$outcome'"
+            exit 1
+          fi
+
+          wb_exit='${{ steps.wb.outputs.exit }}'
+          if [ "$wb_exit" != "1" ]; then
+            echo "::error::expected action output exit=1 from 'node boom.js', got '$wb_exit'"
+            exit 1
+          fi
+
+          bundles=selftest-fixture/.whatbroke/bundles
+          if [ ! -d "$bundles" ]; then
+            echo "::error::no bundles directory at $bundles — whatbroke did not capture the crash"
+            exit 1
+          fi
+          echo 'bundle files:'
+          ls -l "$bundles"
+
+          if ! ls "$bundles"/*.json >/dev/null 2>&1; then
+            echo "::error::no .json bundle in $bundles"
+            exit 1
+          fi
+          if ! ls "$bundles"/*.md >/dev/null 2>&1; then
+            echo "::error::no .md bundle in $bundles — the job-summary step would have had nothing to post"
+            exit 1
+          fi
+          if ! grep -q 'intentional crash' "$bundles"/*.md; then
+            echo "::error::bundle .md does not mention the fixture error message"
+            exit 1
+          fi
+
+          echo '--- head of the rendered bundle the action posted to the job summary ---'
+          sed -n '1,40p' "$bundles"/*.md
+          echo 'selftest OK: step failed as expected; bundle (.json + .md) captured and summarized.'

@@ -1,0 +1,13 @@
+{
+  "name": "crash-inside-dependency",
+  "language": "node",
+  "culprits": [
+    "main.js"
+  ],
+  "argv": [
+    "node",
+    "main.js"
+  ],
+  "greenDir": "green",
+  "brokenDir": "broken"
+}

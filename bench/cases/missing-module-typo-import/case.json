@@ -1,0 +1,18 @@
+{
+  "name": "missing-module-typo-import",
+  "language": "node",
+  "culprits": [
+    "main.js"
+  ],
+  "argv": [
+    "node",
+    "main.js"
+  ],
+  "greenFiles": {
+    "main.js": "const { add } = require('./lib/math.js');\nconsole.log(add(2, 3));\n",
+    "lib/math.js": "module.exports = { add: (a, b) => a + b };\n"
+  },
+  "brokenFiles": {
+    "main.js": "const { add } = require('./lib/maths.js');\nconsole.log(add(2, 3));\n"
+  }
+}

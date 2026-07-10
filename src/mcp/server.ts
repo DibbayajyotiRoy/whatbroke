@@ -3,7 +3,12 @@
  *
  * A read-only stdio MCP server that lets a coding agent read whatbroke's persisted
  * bundles directly. It reads `RedactedBundle` JSON via a `BundleStore`, parses,
- * and serves. It computes nothing, mutates nothing, makes no LLM/network calls.
+ * and serves. It computes nothing and makes no LLM/network calls.
+ *
+ * The ONE deliberate exception to read-only (ADR-0002): `verify_fix` re-runs a
+ * bundle's OWN captured argv — never a caller-supplied command; there is no
+ * input through which an MCP caller can influence what gets executed beyond
+ * choosing which bundle to verify.
  *
  * Tools return focused payloads so the agent can pull the conclusion without the
  * whole blob. `id` defaults to the latest crash bundle everywhere. Tools that
@@ -15,11 +20,19 @@ import { McpServer, ResourceTemplate } from '@modelcontextprotocol/sdk/server/mc
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
 import { z } from 'zod';
 
+import * as path from 'node:path';
 import { BundleStore } from './store.js';
+import { verifyBundle, VerifyError, DEFAULT_VERIFY_TIMEOUT_MS } from '../verify/verify.js';
+import { HistoryIndex, historyPath } from '../history/history.js';
+import { crashFingerprint } from '../repro/fingerprint.js';
 import type { RedactedBundle } from '../types.js';
 
 export interface StartMcpServerOptions {
   bundlesDir: string;
+  /** Project root; enables verify_fix (defaults derived from bundlesDir's project). */
+  projectCwd?: string;
+  /** Custom bundles dir (mirrors --out) so verify writes where the store reads. */
+  out?: string;
 }
 
 /** Standard text tool result. */
@@ -177,6 +190,92 @@ export async function startMcpServer(opts: StartMcpServerOptions): Promise<void>
       });
     },
   );
+
+  server.registerTool(
+    'get_history',
+    {
+      title: 'Get prior occurrences of a crash',
+      description:
+        'Crash history for a fingerprint or bundle id (defaults to the latest ' +
+        "bundle's crash): prior occurrences, whether it was resolved, by which " +
+        'commit touching which files, and a flaky annotation when the same ' +
+        'fingerprint has both green and crashing runs at the same commit. ' +
+        'Read-only, served from the local .whatbroke/index.json.',
+      inputSchema: {
+        id: z.string().optional(),
+        fingerprint: z.string().optional(),
+      },
+    },
+    async ({ id, fingerprint }) => {
+      let fp = fingerprint;
+      if (fp === undefined) {
+        const bundle = await store.get(id);
+        if (!bundle) return notFound(id);
+        fp = crashFingerprint(bundle.crash);
+      }
+      // The index lives in .whatbroke/ next to the journal, even when bundles
+      // are redirected via --out.
+      const storeDir = opts.projectCwd
+        ? path.join(opts.projectCwd, '.whatbroke')
+        : path.dirname(opts.bundlesDir);
+      const history = await HistoryIndex.open(historyPath(storeDir));
+      const entry = history.entry(fp);
+      if (!entry) {
+        return textResult({ fingerprint: fp, note: 'No prior occurrences of this crash.' });
+      }
+      return textResult({ fingerprint: fp, ...entry });
+    },
+  );
+
+  if (opts.projectCwd !== undefined) {
+    const projectCwd = opts.projectCwd;
+    server.registerTool(
+      'verify_fix',
+      {
+        title: 'Verify a fix by re-running the captured command',
+        description:
+          "Re-run the bundle's OWN captured command (never a caller-supplied one; " +
+          'ADR-0002) and report whether the crash is fixed. Returns status ' +
+          "'fixed' | 'same-failure' | 'different-failure', a crash delta with " +
+          'reasons when still failing, and newBundleId on a different failure so ' +
+          'you can iterate. On fixed, the bundle is marked resolved and the green ' +
+          'run is recorded. Defaults to the latest bundle. The typical loop: ' +
+          'get_suspects → edit code → verify_fix → repeat until fixed.',
+        inputSchema: {
+          id: z.string().optional(),
+          timeoutMs: z
+            .number()
+            .int()
+            .positive()
+            .max(30 * 60 * 1000)
+            .optional(),
+        },
+      },
+      async ({ id, timeoutMs }) => {
+        try {
+          const vOpts: Parameters<typeof verifyBundle>[0] = { projectCwd };
+          if (id !== undefined) vOpts.id = id;
+          if (opts.out !== undefined) vOpts.out = opts.out;
+          vOpts.timeoutMs = timeoutMs ?? DEFAULT_VERIFY_TIMEOUT_MS;
+          const outcome = await verifyBundle(vOpts);
+          const payload: Record<string, unknown> = {
+            status: outcome.status,
+            bundleId: outcome.bundleId,
+            exitCode: outcome.exitCode,
+          };
+          if (outcome.delta) payload['delta'] = outcome.delta;
+          if (outcome.newBundleId) payload['newBundleId'] = outcome.newBundleId;
+          if (outcome.resolvedCommit) payload['resolvedCommit'] = outcome.resolvedCommit;
+          return textResult(payload);
+        } catch (err) {
+          if (err instanceof VerifyError) {
+            return textResult({ error: { kind: err.kind, message: err.message } });
+          }
+          return textResult({ error: { kind: 'internal', message: String(err) } });
+        }
+      },
+    );
+  }
 
   // ── Resources (mirror high-value tools; same store) ────────────────────────
 

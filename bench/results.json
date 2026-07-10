@@ -1,0 +1,511 @@
+{
+  "cases": [
+    {
+      "name": "anonymous-arrow-frame",
+      "expectedMiss": false,
+      "top1": true,
+      "top3": true,
+      "topSuspect": "main.js",
+      "suspects": [
+        "main.js"
+      ],
+      "culprits": [
+        "main.js"
+      ]
+    },
+    {
+      "name": "assertion-script-changed",
+      "expectedMiss": false,
+      "top1": true,
+      "top3": true,
+      "topSuspect": "checks.js",
+      "suspects": [
+        "checks.js"
+      ],
+      "culprits": [
+        "checks.js"
+      ]
+    },
+    {
+      "name": "async-await-throw-in-helper",
+      "expectedMiss": false,
+      "top1": true,
+      "top3": true,
+      "topSuspect": "lib/fetchData.js",
+      "suspects": [
+        "lib/fetchData.js",
+        "main.js"
+      ],
+      "culprits": [
+        "lib/fetchData.js"
+      ]
+    },
+    {
+      "name": "async-producer-buried",
+      "expectedMiss": true,
+      "top1": false,
+      "top3": true,
+      "topSuspect": "lib/queue.js",
+      "suspects": [
+        "lib/queue.js",
+        "lib/schema.js",
+        "send.js",
+        "lib/worker.js"
+      ],
+      "culprits": [
+        "send.js"
+      ]
+    },
+    {
+      "name": "bad-regexp-entry",
+      "expectedMiss": false,
+      "top1": true,
+      "top3": true,
+      "topSuspect": "main.js",
+      "suspects": [
+        "main.js"
+      ],
+      "culprits": [
+        "main.js"
+      ]
+    },
+    {
+      "name": "call-missing-method",
+      "expectedMiss": false,
+      "top1": true,
+      "top3": true,
+      "topSuspect": "main.js",
+      "suspects": [
+        "main.js"
+      ],
+      "culprits": [
+        "main.js"
+      ]
+    },
+    {
+      "name": "caller-passes-numbers",
+      "expectedMiss": false,
+      "top1": true,
+      "top3": true,
+      "topSuspect": "main.js",
+      "suspects": [
+        "main.js",
+        "lib/sum.js"
+      ],
+      "culprits": [
+        "main.js"
+      ]
+    },
+    {
+      "name": "chain-culprit-mid",
+      "expectedMiss": false,
+      "top1": true,
+      "top3": true,
+      "topSuspect": "lib/parser.js",
+      "suspects": [
+        "lib/parser.js",
+        "lib/scanner.js",
+        "main.js"
+      ],
+      "culprits": [
+        "lib/parser.js"
+      ]
+    },
+    {
+      "name": "cjs-package-require-chain",
+      "expectedMiss": false,
+      "top1": true,
+      "top3": true,
+      "topSuspect": "lib/util.js",
+      "suspects": [
+        "lib/util.js",
+        "index.js"
+      ],
+      "culprits": [
+        "lib/util.js"
+      ]
+    },
+    {
+      "name": "cli-arg-parse-throw",
+      "expectedMiss": false,
+      "top1": true,
+      "top3": true,
+      "topSuspect": "lib/args.js",
+      "suspects": [
+        "lib/args.js",
+        "main.js"
+      ],
+      "culprits": [
+        "lib/args.js"
+      ]
+    },
+    {
+      "name": "config-key-removed-deep",
+      "expectedMiss": true,
+      "top1": false,
+      "top3": false,
+      "topSuspect": "lib/validate.js",
+      "suspects": [
+        "lib/validate.js",
+        "lib/loader.js",
+        "index.js",
+        "settings.json"
+      ],
+      "culprits": [
+        "settings.json"
+      ]
+    },
+    {
+      "name": "constants-hop-removed-export",
+      "expectedMiss": true,
+      "top1": false,
+      "top3": true,
+      "topSuspect": "lib/stage2.js",
+      "suspects": [
+        "lib/stage2.js",
+        "lib/constants.js",
+        "lib/stage1.js",
+        "app.js"
+      ],
+      "culprits": [
+        "lib/constants.js"
+      ]
+    },
+    {
+      "name": "crash-inside-dependency",
+      "expectedMiss": false,
+      "top1": true,
+      "top3": true,
+      "topSuspect": "main.js",
+      "suspects": [
+        "main.js",
+        "node_modules/badge/index.js"
+      ],
+      "culprits": [
+        "main.js"
+      ]
+    },
+    {
+      "name": "deep-stack-five-files",
+      "expectedMiss": false,
+      "top1": true,
+      "top3": true,
+      "topSuspect": "lib/stage4.js",
+      "suspects": [
+        "lib/stage4.js",
+        "lib/stage3.js",
+        "lib/stage1.js",
+        "lib/stage2.js",
+        "main.js"
+      ],
+      "culprits": [
+        "lib/stage4.js"
+      ]
+    },
+    {
+      "name": "esm-mjs-throw",
+      "expectedMiss": false,
+      "top1": false,
+      "top3": true,
+      "topSuspect": "file:<sandbox>/main.mjs",
+      "suspects": [
+        "file:<sandbox>/main.mjs",
+        "main.mjs"
+      ],
+      "culprits": [
+        "main.mjs"
+      ]
+    },
+    {
+      "name": "esm-package-type-module",
+      "expectedMiss": false,
+      "top1": false,
+      "top3": true,
+      "topSuspect": "file:<sandbox>/lib/data.js",
+      "suspects": [
+        "file:<sandbox>/lib/data.js",
+        "file:<sandbox>/main.js",
+        "lib/data.js"
+      ],
+      "culprits": [
+        "lib/data.js"
+      ]
+    },
+    {
+      "name": "event-handler-throw",
+      "expectedMiss": false,
+      "top1": true,
+      "top3": true,
+      "topSuspect": "lib/bus.js",
+      "suspects": [
+        "lib/bus.js",
+        "main.js"
+      ],
+      "culprits": [
+        "lib/bus.js"
+      ]
+    },
+    {
+      "name": "exit1-multi-changed",
+      "expectedMiss": false,
+      "top1": true,
+      "top3": true,
+      "topSuspect": "main.js",
+      "suspects": [
+        "main.js",
+        "notes.txt"
+      ],
+      "culprits": [
+        "main.js"
+      ]
+    },
+    {
+      "name": "exit1-no-throw",
+      "expectedMiss": false,
+      "top1": true,
+      "top3": true,
+      "topSuspect": "main.js",
+      "suspects": [
+        "main.js"
+      ],
+      "culprits": [
+        "main.js"
+      ]
+    },
+    {
+      "name": "helper-throw-surfaces-in-entry",
+      "expectedMiss": false,
+      "top1": true,
+      "top3": true,
+      "topSuspect": "lib/helper.js",
+      "suspects": [
+        "lib/helper.js",
+        "main.js"
+      ],
+      "culprits": [
+        "lib/helper.js"
+      ]
+    },
+    {
+      "name": "import-hop-model-shape",
+      "expectedMiss": true,
+      "top1": false,
+      "top3": true,
+      "topSuspect": "app.js",
+      "suspects": [
+        "app.js",
+        "lib/format.js",
+        "lib/models.js",
+        "lib/controller.js"
+      ],
+      "culprits": [
+        "lib/models.js"
+      ]
+    },
+    {
+      "name": "json-parse-config",
+      "expectedMiss": false,
+      "top1": false,
+      "top3": true,
+      "topSuspect": "main.js",
+      "suspects": [
+        "main.js",
+        "config.json"
+      ],
+      "culprits": [
+        "config.json"
+      ]
+    },
+    {
+      "name": "missing-module-typo-import",
+      "expectedMiss": false,
+      "top1": true,
+      "top3": true,
+      "topSuspect": "main.js",
+      "suspects": [
+        "main.js",
+        "Module._compile (node:internal/modules/cjs/loader:1706:14) {"
+      ],
+      "culprits": [
+        "main.js"
+      ]
+    },
+    {
+      "name": "multi-change-one-culprit",
+      "expectedMiss": false,
+      "top1": true,
+      "top3": true,
+      "topSuspect": "lib/rate.js",
+      "suspects": [
+        "lib/rate.js",
+        "main.js",
+        "notes.txt"
+      ],
+      "culprits": [
+        "lib/rate.js"
+      ]
+    },
+    {
+      "name": "off-by-one-array",
+      "expectedMiss": false,
+      "top1": true,
+      "top3": true,
+      "topSuspect": "main.js",
+      "suspects": [
+        "main.js"
+      ],
+      "culprits": [
+        "main.js"
+      ]
+    },
+    {
+      "name": "parse-guard-removed",
+      "expectedMiss": false,
+      "top1": true,
+      "top3": true,
+      "topSuspect": "lib/parse.js",
+      "suspects": [
+        "lib/parse.js",
+        "main.js"
+      ],
+      "culprits": [
+        "lib/parse.js"
+      ]
+    },
+    {
+      "name": "recursion-range-error",
+      "expectedMiss": false,
+      "top1": true,
+      "top3": true,
+      "topSuspect": "lib/tree.js",
+      "suspects": [
+        "lib/tree.js"
+      ],
+      "culprits": [
+        "lib/tree.js"
+      ]
+    },
+    {
+      "name": "rejection-in-helper-async",
+      "expectedMiss": false,
+      "top1": true,
+      "top3": true,
+      "topSuspect": "lib/api.js",
+      "suspects": [
+        "lib/api.js",
+        "main.js"
+      ],
+      "culprits": [
+        "lib/api.js"
+      ]
+    },
+    {
+      "name": "require-time-throw",
+      "expectedMiss": false,
+      "top1": true,
+      "top3": true,
+      "topSuspect": "lib/init.js",
+      "suspects": [
+        "lib/init.js",
+        "main.js"
+      ],
+      "culprits": [
+        "lib/init.js"
+      ]
+    },
+    {
+      "name": "syntax-error-entry",
+      "expectedMiss": false,
+      "top1": true,
+      "top3": true,
+      "topSuspect": "main.js",
+      "suspects": [
+        "main.js"
+      ],
+      "culprits": [
+        "main.js"
+      ]
+    },
+    {
+      "name": "throw-direct-entry",
+      "expectedMiss": false,
+      "top1": true,
+      "top3": true,
+      "topSuspect": "main.js",
+      "suspects": [
+        "main.js"
+      ],
+      "culprits": [
+        "main.js"
+      ]
+    },
+    {
+      "name": "throw-in-constructor",
+      "expectedMiss": false,
+      "top1": true,
+      "top3": true,
+      "topSuspect": "lib/config.js",
+      "suspects": [
+        "lib/config.js",
+        "main.js"
+      ],
+      "culprits": [
+        "lib/config.js"
+      ]
+    },
+    {
+      "name": "typeerror-undefined-prop",
+      "expectedMiss": false,
+      "top1": true,
+      "top3": true,
+      "topSuspect": "main.js",
+      "suspects": [
+        "main.js"
+      ],
+      "culprits": [
+        "main.js"
+      ]
+    },
+    {
+      "name": "unhandled-rejection-entry",
+      "expectedMiss": false,
+      "top1": true,
+      "top3": true,
+      "topSuspect": "main.js",
+      "suspects": [
+        "main.js"
+      ],
+      "culprits": [
+        "main.js"
+      ]
+    },
+    {
+      "name": "wrong-arg-type-to-helper",
+      "expectedMiss": false,
+      "top1": true,
+      "top3": true,
+      "topSuspect": "lib/format.js",
+      "suspects": [
+        "lib/format.js",
+        "lib/pad.js",
+        "main.js"
+      ],
+      "culprits": [
+        "lib/format.js"
+      ]
+    }
+  ],
+  "top1": 28,
+  "top3": 31,
+  "top1Pct": 90.3,
+  "top3Pct": 100,
+  "knownMisses": {
+    "total": 4,
+    "flipped": [
+      "async-producer-buried",
+      "constants-hop-removed-export",
+      "import-hop-model-shape"
+    ]
+  },
+  "errors": []
+}

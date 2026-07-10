@@ -1,0 +1,19 @@
+{
+  "name": "cli-arg-parse-throw",
+  "language": "node",
+  "culprits": [
+    "lib/args.js"
+  ],
+  "argv": [
+    "node",
+    "main.js",
+    "--verbose"
+  ],
+  "greenFiles": {
+    "main.js": "const { parseArgs } = require('./lib/args.js');\nconsole.log(JSON.stringify(parseArgs(process.argv.slice(2))));\n",
+    "lib/args.js": "function parseArgs(argv) {\n  const flags = {};\n  for (const a of argv) {\n    if (a.startsWith('--')) flags[a.slice(2)] = true;\n  }\n  return flags;\n}\nmodule.exports = { parseArgs };\n"
+  },
+  "brokenFiles": {
+    "lib/args.js": "function parseArgs(argv) {\n  const flags = {};\n  for (const a of argv) {\n    if (a.startsWith('--')) throw new Error('unknown flag: ' + a);\n    flags[a] = true;\n  }\n  return flags;\n}\nmodule.exports = { parseArgs };\n"
+  }
+}
