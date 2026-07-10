@@ -1,9 +1,9 @@
 {
   "name": "whatbroke-vscode",
-  "displayName": "whatbroke",
-  "version": "0.1.0",
-  "description": "Read-only viewer for whatbroke crash bundles: surfaces the latest crash, ranked suspects, diff-since-green, and logs inside VS Code. The brain stays in the CLI — this extension computes nothing.",
-  "publisher": "dibbayajyoti",
+  "displayName": "whatbroke — crash context for your AI coding agent",
+  "version": "0.2.1",
+  "description": "See your latest crash in VS Code: the likely responsible file (ranked), the diff since your code last worked, the stack trace, and secret-free logs. Turns a Node, TypeScript, Python, or Go crash into grounded context your AI coding agent can actually fix — captured by the whatbroke CLI, surfaced where you debug.",
+  "publisher": "DibbayajyotiRoy",
   "license": "Apache-2.0",
   "author": "Dibbayajyoti Roy <dibbayajyoti@gmail.com> (https://dibbayajyoti.com)",
   "repository": {
@@ -20,15 +20,35 @@
   },
   "categories": [
     "Other",
-    "Debuggers"
+    "Debuggers",
+    "Testing"
   ],
   "keywords": [
-    "whatbroke",
     "crash",
-    "stack-trace",
     "debugging",
-    "suspect"
+    "stack trace",
+    "error",
+    "ai coding agent",
+    "test failure",
+    "bug report",
+    "suspect",
+    "diff",
+    "regression",
+    "mcp",
+    "copilot",
+    "claude",
+    "cursor",
+    "pytest",
+    "golang",
+    "typescript",
+    "nodejs",
+    "git",
+    "whatbroke"
   ],
+  "galleryBanner": {
+    "color": "#1A1208",
+    "theme": "dark"
+  },
   "icon": "media/icon.png",
   "main": "./dist/extension.js",
   "activationEvents": [
