@@ -39,6 +39,8 @@
     "prepublishOnly": "npm run clean && npm run build",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "test": "tsx --test $(find src -name '*.test.ts')",
+    "bench": "tsx bench/run.ts",
+    "bench:gate": "tsx bench/run.ts --gate",
     "dev": "tsx src/cli.ts"
   },
   "keywords": [

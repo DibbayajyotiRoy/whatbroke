@@ -1,0 +1,18 @@
+{
+  "name": "async-await-throw-in-helper",
+  "language": "node",
+  "culprits": [
+    "lib/fetchData.js"
+  ],
+  "argv": [
+    "node",
+    "main.js"
+  ],
+  "greenFiles": {
+    "main.js": "const { fetchData } = require('./lib/fetchData.js');\nasync function main() {\n  const row = await fetchData('answer');\n  console.log(row.value);\n}\nmain().catch((err) => {\n  console.error(err);\n  process.exit(1);\n});\n",
+    "lib/fetchData.js": "async function fetchData(key) {\n  return { key, value: 42 };\n}\nmodule.exports = { fetchData };\n"
+  },
+  "brokenFiles": {
+    "lib/fetchData.js": "async function fetchData(key) {\n  throw new Error('backend unavailable for ' + key);\n}\nmodule.exports = { fetchData };\n"
+  }
+}

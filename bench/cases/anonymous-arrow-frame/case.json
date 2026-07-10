@@ -1,0 +1,17 @@
+{
+  "name": "anonymous-arrow-frame",
+  "language": "node",
+  "culprits": [
+    "main.js"
+  ],
+  "argv": [
+    "node",
+    "main.js"
+  ],
+  "greenFiles": {
+    "main.js": "const rows = [{ tags: ['a'] }, { tags: ['b'] }];\nconst counts = rows.map((r) => r.tags.length);\nconsole.log(counts.join(','));\n"
+  },
+  "brokenFiles": {
+    "main.js": "const rows = [{ labels: ['a'] }, { labels: ['b'] }];\nconst counts = rows.map((r) => r.tags.length);\nconsole.log(counts.join(','));\n"
+  }
+}

@@ -4,6 +4,10 @@
  * one subtlety that `run` takes a verbatim child command after `--`.
  */
 import { runCmd, type RunArgs } from './commands/run.js';
+import { verifyCmd } from './commands/verify.js';
+import { statsCmd } from './commands/stats.js';
+import { watchCmd } from './commands/watch.js';
+import { initCmd } from './commands/init.js';
 import { showCmd } from './commands/show.js';
 import { openCmd } from './commands/open.js';
 import { journalCmd } from './commands/journal.js';
@@ -17,10 +21,14 @@ const HELP = `whatbroke ${TOOL_VERSION} — terminal-side capture layer for loca
 
 Usage:
   whatbroke run [flags] -- <command> [args...]   Wrap a command; bundle on crash
+  whatbroke verify [<id>] [--timeout <ms>]        Re-run a bundle's captured command; report fixed/same/different
   whatbroke mcp [--out <dir>]                     Read-only MCP server for this project
   whatbroke show [<id|path>] [--out <dir>]        Re-render a saved bundle as Markdown
   whatbroke open [<id|path>] --github [owner/repo] Send a saved bundle to a sink
   whatbroke journal [--list|--clear]              Inspect/clear the green-commit journal
+  whatbroke stats                                 Local suspect-ranking hit-rate over verified fixes
+  whatbroke watch [flags] -- <command> [args...]  Re-run on change; record greens, capture new crashes
+  whatbroke init [--yes]                          Register the MCP server with your agent (dry-run without --yes)
   whatbroke doctor                                Print diagnostics to report a bug in whatbroke
   whatbroke --version | --help
 
@@ -29,6 +37,9 @@ run flags:
   --no-file          Do not write bundle files
   --md               Also print rendered Markdown to stdout
   --github [repo]    Open a prefilled GitHub issue (infers repo if omitted)
+  --github-pr        Post/update a sticky PR comment (CI; needs gh or GITHUB_TOKEN)
+  --ci | --no-ci     Force CI mode on/off (auto-detected from $CI): no color,
+                     bundle always written, stable ::whatbroke line on stdout
   --timeout <ms>     Kill + treat as crash if the child hangs
   --log-lines <n>    Ring-buffer size per stream
   --explain          Enable optional LLM narration (requires a configured provider)
@@ -58,6 +69,24 @@ async function main(argv: string[]): Promise<number> {
   switch (cmd) {
     case 'run':
       return runCmd(parseRunArgs(rest, cwd));
+    case 'verify': {
+      const out = takeValue(rest, '--out');
+      const timeoutRaw = takeValue(rest, '--timeout');
+      const id = rest.find((a) => !a.startsWith('-') && a !== timeoutRaw && a !== out);
+      const vargs: {
+        cwd: string;
+        verbosity: Verbosity;
+        id?: string;
+        out?: string;
+        timeoutMs?: number;
+      } = { cwd, verbosity: verbosityFrom(new Set(rest)) };
+      if (id) vargs.id = id;
+      if (out) vargs.out = out;
+      if (timeoutRaw && Number.isFinite(Number(timeoutRaw))) {
+        vargs.timeoutMs = Number(timeoutRaw);
+      }
+      return verifyCmd(vargs);
+    }
     case 'mcp': {
       const out = takeValue(rest, '--out');
       const margs: { cwd: string; out?: string } = { cwd };
@@ -97,6 +126,26 @@ async function main(argv: string[]): Promise<number> {
       const action = rest.includes('--clear') ? 'clear' : 'list';
       return journalCmd({ cwd, action, verbosity: verbosityFrom(new Set(rest)) });
     }
+    case 'stats':
+      return statsCmd({ cwd, verbosity: verbosityFrom(new Set(rest)) });
+    case 'watch': {
+      const r = parseRunArgs(rest, cwd);
+      const wargs: Parameters<typeof watchCmd>[0] = {
+        targetArgv: r.targetArgv,
+        cwd: r.cwd,
+        verbosity: r.verbosity,
+      };
+      if (r.out !== undefined) wargs.out = r.out;
+      if (r.timeoutMs !== undefined) wargs.timeoutMs = r.timeoutMs;
+      if (r.logLines !== undefined) wargs.logLines = r.logLines;
+      return watchCmd(wargs);
+    }
+    case 'init':
+      return initCmd({
+        cwd,
+        yes: rest.includes('--yes') || rest.includes('-y'),
+        verbosity: verbosityFrom(new Set(rest)),
+      });
     case 'doctor': {
       const out = takeValue(rest, '--out');
       const dargs: { cwd: string; out?: string } = { cwd };
@@ -145,6 +194,9 @@ function parseRunArgs(rest: string[], cwd: string): RunArgs {
   if (flagSet.has('--no-file')) args.noFile = true;
   if (flagSet.has('--md')) args.md = true;
   if (github) args.github = github;
+  if (flagSet.has('--github-pr')) args.githubPr = true;
+  if (flagSet.has('--ci')) args.ci = true;
+  if (flagSet.has('--no-ci')) args.ci = false;
   if (flagSet.has('--explain')) args.explain = true;
   if (logLinesRaw && Number.isFinite(Number(logLinesRaw))) {
     args.logLines = Number(logLinesRaw);

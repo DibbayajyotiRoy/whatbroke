@@ -1,0 +1,18 @@
+{
+  "name": "rejection-in-helper-async",
+  "language": "node",
+  "culprits": [
+    "lib/api.js"
+  ],
+  "argv": [
+    "node",
+    "main.js"
+  ],
+  "greenFiles": {
+    "main.js": "const { load } = require('./lib/api.js');\nload(7).then((row) => console.log(row.status));\n",
+    "lib/api.js": "async function load(id) {\n  return { id, status: 'active' };\n}\nmodule.exports = { load };\n"
+  },
+  "brokenFiles": {
+    "lib/api.js": "async function load(id) {\n  throw new Error('api token rejected for ' + id);\n}\nmodule.exports = { load };\n"
+  }
+}

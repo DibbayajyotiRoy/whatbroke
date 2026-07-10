@@ -1,0 +1,21 @@
+{
+  "name": "config-key-removed-deep",
+  "language": "node",
+  "expectedMiss": true,
+  "culprits": [
+    "settings.json"
+  ],
+  "argv": [
+    "node",
+    "index.js"
+  ],
+  "greenFiles": {
+    "index.js": "const { loadSettings } = require('./lib/loader.js');\nconsole.log(loadSettings('./settings.json'));\n",
+    "lib/loader.js": "const fs = require('node:fs');\nconst { checkSettings } = require('./validate.js');\nfunction loadSettings(file) {\n  const cfg = JSON.parse(fs.readFileSync(file, 'utf8'));\n  return checkSettings(cfg);\n}\nmodule.exports = { loadSettings };\n",
+    "lib/validate.js": "function checkSettings(cfg) {\n  return 'rules: ' + cfg.rules.map((r) => r.name).join(',');\n}\nmodule.exports = { checkSettings };\n",
+    "settings.json": "{ \"rules\": [{ \"name\": \"default\" }] }\n"
+  },
+  "brokenFiles": {
+    "settings.json": "{ \"mode\": \"fast\" }\n"
+  }
+}

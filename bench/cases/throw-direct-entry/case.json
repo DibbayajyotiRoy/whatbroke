@@ -1,0 +1,17 @@
+{
+  "name": "throw-direct-entry",
+  "language": "node",
+  "culprits": [
+    "main.js"
+  ],
+  "argv": [
+    "node",
+    "main.js"
+  ],
+  "greenFiles": {
+    "main.js": "const message = 'service started';\nconsole.log(message);\n"
+  },
+  "brokenFiles": {
+    "main.js": "const message = 'service started';\nthrow new Error('startup failed: missing token');\n"
+  }
+}

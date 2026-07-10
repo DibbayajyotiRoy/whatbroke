@@ -1,0 +1,19 @@
+{
+  "name": "exit1-multi-changed",
+  "language": "node",
+  "culprits": [
+    "main.js"
+  ],
+  "argv": [
+    "node",
+    "main.js"
+  ],
+  "greenFiles": {
+    "main.js": "const threshold = 10;\nif (threshold > 5) {\n  console.log('threshold ok');\n} else {\n  console.error('fatal: threshold misconfigured');\n  process.exit(1);\n}\n",
+    "notes.txt": "ops runbook v1\n"
+  },
+  "brokenFiles": {
+    "main.js": "const threshold = 2;\nif (threshold > 5) {\n  console.log('threshold ok');\n} else {\n  console.error('fatal: threshold misconfigured');\n  process.exit(1);\n}\n",
+    "notes.txt": "ops runbook v2\n"
+  }
+}

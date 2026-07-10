@@ -1,32 +1,21 @@
 /**
  * `whatbroke run [flags] -- <command> [args...]` — the primary command (07).
  *
- * Wraps the target command, and on a crash assembles → redacts → writes the
- * bundle and any requested sinks. On a passing run it is invisible and records a
- * green commit to the journal (which powers the moat, 05).
+ * Flag parsing + presentation only; the staged pipeline itself lives in
+ * `src/pipeline.ts` (ADR-0007) and is shared with `verify`, `--ci`, and watch.
  */
 import { relative } from 'node:path';
 import type { CommandSpec, RedactedBundle, Sink, SinkResult } from '../types.js';
-import { runCommand } from '../capture/runner.js';
-import { collectAll } from '../collectors/index.js';
-import { reconstruct } from '../repro/reconstruct.js';
-import { redact } from '../redaction/redact.js';
 import { renderMarkdown } from '../render/markdown.js';
 import { createFileSink } from '../sinks/file.js';
 import { createStdoutMarkdownSink } from '../sinks/stdout.js';
 import { createGithubSink } from '../sinks/github.js';
-import { openJournal, fingerprint } from '../journal/journal.js';
-import {
-  assembleBundle,
-  enrichFrames,
-  getGitRoot,
-  gitHeadAndBranch,
-} from '../assemble.js';
-import { buildDetectionContext, selectAdapter } from '../adapters/index.js';
-import { bundleId } from '../ids.js';
-import { resolveStorePaths, ensureStore, ensureGitignore } from '../paths.js';
+import { createGithubPrSink } from '../sinks/githubPr.js';
+import { openJournal } from '../journal/journal.js';
+import { resolveStorePaths } from '../paths.js';
 import { loadConfig, applyCliOverrides } from '../config.js';
 import { makeLogger, type Verbosity } from '../util/log.js';
+import { executePipeline, SpawnFailedError } from '../pipeline.js';
 
 export interface RunArgs {
   targetArgv: string[];
@@ -35,6 +24,9 @@ export interface RunArgs {
   noFile?: boolean;
   md?: boolean;
   github?: { repo?: string } | false;
+  githubPr?: boolean;
+  /** CI mode (2.1): tri-state — true/false from flags, undefined = auto from $CI. */
+  ci?: boolean;
   timeoutMs?: number;
   logLines?: number;
   explain?: boolean;
@@ -43,8 +35,16 @@ export interface RunArgs {
 
 export const USAGE_EXIT = 64;
 
+/** True when running under CI: explicit flag wins, else the CI env convention. */
+export function ciModeEnabled(flag: boolean | undefined, env = process.env): boolean {
+  if (flag !== undefined) return flag;
+  const v = env['CI'];
+  return v !== undefined && v !== '' && v !== 'false' && v !== '0';
+}
+
 export async function runCmd(args: RunArgs): Promise<number> {
-  const log = makeLogger(args.verbosity);
+  const ci = ciModeEnabled(args.ci);
+  const log = ci ? makeLogger(args.verbosity, { color: false }) : makeLogger(args.verbosity);
 
   if (args.targetArgv.length === 0) {
     log.error('whatbroke run: no command given. Usage: whatbroke run -- <command> [args...]');
@@ -62,100 +62,9 @@ export async function runCmd(args: RunArgs): Promise<number> {
   const storePaths = resolveStorePaths(args.cwd, config.out);
   const journal = await openJournal(storePaths.journal);
 
-  // ── Capture ────────────────────────────────────────────────────────────────
-  let capture;
-  try {
-    const runOpts: { logLines: number; timeoutMs?: number } = {
-      logLines: config.logLines,
-    };
-    if (args.timeoutMs !== undefined) runOpts.timeoutMs = args.timeoutMs;
-    capture = await runCommand(command, runOpts);
-  } catch (err) {
-    const code = (err as { code?: string }).code;
-    if (code === 'ENOENT') {
-      log.error(`whatbroke: command not found: ${args.targetArgv[0]}`);
-      return USAGE_EXIT;
-    }
-    log.error(`whatbroke: failed to run command: ${String(err)}`);
-    return USAGE_EXIT;
-  }
-
-  // ── Happy path: record green, stay invisible ─────────────────────────────────
-  if (capture.crash === null) {
-    const { head, branch } = await gitHeadAndBranch(args.cwd);
-    if (head) {
-      try {
-        // Gitignore .whatbroke/ before the journal write so it never shows up as
-        // an untracked file (hence a false "changed" suspect) in a later run.
-        await ensureGitignore(args.cwd);
-        await journal.recordGreen(fingerprint(command.argv, branch), head);
-        log.line(log.style.dim(`${log.style.green('✓')} green recorded (${head.slice(0, 7)})`));
-      } catch (err) {
-        log.verbose(`whatbroke: could not record green: ${String(err)}`);
-      }
-    }
-    return capture.exitCode ?? 0;
-  }
-
-  // ── Crash path: detect stack → assemble → redact → sinks ─────────────────────
-  // Pick the language adapter from the command + cwd + captured stderr, then
-  // re-derive the crash through it (the Node-default classification from capture
-  // is a fallback; for Python/Go this parses the real traceback/panic).
-  const detectionCtx = await buildDetectionContext(command, capture.logs);
-  const adapter = selectAdapter(detectionCtx);
-  const stderrText = capture.logs.stderrTail;
-  const adapterError = adapter.parseError(stderrText);
-  const reclassified = adapter.classify({
-    exitCode: capture.exitCode,
-    signal: capture.signal,
-    stderrText,
-    error: adapterError,
-  });
-  const crash = reclassified ?? capture.crash;
-
-  // Collect git context BEFORE whatbroke writes its own .gitignore entry, so our
-  // setup edit never shows up as a "changed since green" file or a suspect.
-  const gitRoot = await getGitRoot(args.cwd);
-  if (crash.error) {
-    crash.error.stack = enrichFrames(crash.error.stack, gitRoot, args.cwd);
-  }
-
-  const context = await collectAll({
-    command,
-    journal,
-    frames: crash.error?.stack ?? [],
-    logs: capture.logs,
-    adapter,
-  });
-  for (const ce of context.collectorErrors) {
-    log.verbose(`whatbroke: collector '${ce.collector}' degraded: ${ce.error}`);
-  }
-
-  const repro = reconstruct({ crash, context, command });
-
-  const bundle = assembleBundle({
-    id: bundleId(),
-    createdAt: new Date().toISOString(),
-    crash,
-    context,
-    logs: capture.logs,
-    repro,
-    language: adapter.id,
-  });
-
-  const redacted = redact(bundle, {
-    allowEnv: config.redaction.allowEnv,
-    denyPatterns: config.redaction.denyPatterns,
-    entropy: config.redaction.entropy,
-  });
-
-  // Now safe to create the store + .gitignore entry (after git was read).
-  const { createdGitignore } = await ensureStore(storePaths);
-  if (createdGitignore) log.dim('whatbroke: created .gitignore (ignoring .whatbroke/)');
-
-  // ── Sinks ────────────────────────────────────────────────────────────────────
   const sinks: Sink[] = [];
-  if (!args.noFile) {
+  // CI mode always writes the bundle file — it is the artifact teammates see.
+  if (!args.noFile || ci) {
     sinks.push(createFileSink({ bundlesDir: storePaths.bundlesDir, render: renderMarkdown }));
   }
   if (args.md) {
@@ -169,18 +78,55 @@ export async function runCmd(args: RunArgs): Promise<number> {
     if (args.github.repo) ghOpts.repo = args.github.repo;
     sinks.push(createGithubSink(ghOpts));
   }
-
-  const results: SinkResult[] = [];
-  for (const sink of sinks) {
-    try {
-      results.push(await sink(redacted));
-    } catch (err) {
-      results.push({ sink: 'unknown', ok: false, message: String(err) });
-    }
+  // Sticky PR comment (2.2). Explicit flag, or on by default under CI when a
+  // PR context is detectable — the sink itself no-ops (warns) without one and
+  // never fails the build.
+  if (args.githubPr || (ci && process.env['GITHUB_ACTIONS'] === 'true')) {
+    sinks.push(createGithubPrSink({ cwd: args.cwd }));
   }
 
-  printCrashSummary(redacted, results, log, args.cwd);
-  return capture.exitCode ?? 1;
+  let result;
+  try {
+    const pipelineOpts: Parameters<typeof executePipeline>[0] = {
+      command,
+      config,
+      storePaths,
+      journal,
+      sinks,
+      onVerbose: (msg) => log.verbose(msg),
+      onGreen: (head) =>
+        log.line(log.style.dim(`${log.style.green('✓')} green recorded (${head.slice(0, 7)})`)),
+    };
+    if (args.timeoutMs !== undefined) pipelineOpts.timeoutMs = args.timeoutMs;
+    result = await executePipeline(pipelineOpts);
+  } catch (err) {
+    if (err instanceof SpawnFailedError && err.code === 'ENOENT') {
+      log.error(`whatbroke: command not found: ${args.targetArgv[0]}`);
+      return USAGE_EXIT;
+    }
+    log.error(`whatbroke: failed to run command: ${String(err instanceof SpawnFailedError ? err.cause ?? err : err)}`);
+    return USAGE_EXIT;
+  }
+
+  if (result.outcome === 'green') return result.exitCode;
+
+  if (ci) printCiMachineLine(result.bundle, result.sinkResults);
+  printCrashSummary(result.bundle, result.sinkResults, log, args.cwd);
+  return result.exitCode;
+}
+
+/**
+ * The one stable machine-readable line CI tooling greps for (2.1 AC1). Goes to
+ * stdout (whatbroke's human chatter stays on stderr). Format is a contract:
+ * `::whatbroke bundle=<abs json path> confidence=<level> suspect=<relpath|->`.
+ */
+function printCiMachineLine(bundle: RedactedBundle, results: SinkResult[]): void {
+  const file = results.find((r) => r.ok && r.paths?.length);
+  const json = file?.paths?.find((p) => p.endsWith('.json')) ?? '-';
+  const suspect = bundle.repro.suspects[0]?.path ?? '-';
+  process.stdout.write(
+    `::whatbroke bundle=${json} confidence=${bundle.repro.confidence} suspect=${suspect}\n`,
+  );
 }
 
 function confidenceLabel(c: string, s: ReturnType<typeof makeLogger>['style']): string {

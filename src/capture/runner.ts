@@ -197,12 +197,14 @@ export async function runCommand(
         stderrText: stderrBuf.text(),
       });
 
-      resolve({
+      const result: CaptureResult = {
         exitCode: effectiveExit,
         signal: effectiveSignal,
         crash,
         logs,
-      });
+      };
+      if (timedOut) result.timedOut = true;
+      resolve(result);
     });
   });
 }

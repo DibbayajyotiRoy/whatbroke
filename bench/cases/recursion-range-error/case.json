@@ -1,0 +1,18 @@
+{
+  "name": "recursion-range-error",
+  "language": "node",
+  "culprits": [
+    "lib/tree.js"
+  ],
+  "argv": [
+    "node",
+    "main.js"
+  ],
+  "greenFiles": {
+    "main.js": "const { depth } = require('./lib/tree.js');\nconsole.log(depth({ child: null }));\n",
+    "lib/tree.js": "function depth(node) {\n  if (!node) return 0;\n  return 1 + depth(node.child);\n}\nmodule.exports = { depth };\n"
+  },
+  "brokenFiles": {
+    "lib/tree.js": "function depth(node) {\n  if (!node) return 0;\n  return 1 + depth(node);\n}\nmodule.exports = { depth };\n"
+  }
+}

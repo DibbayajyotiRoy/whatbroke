@@ -1,0 +1,21 @@
+{
+  "name": "import-hop-model-shape",
+  "language": "node",
+  "expectedMiss": true,
+  "culprits": [
+    "lib/models.js"
+  ],
+  "argv": [
+    "node",
+    "app.js"
+  ],
+  "greenFiles": {
+    "app.js": "const { getUser } = require('./lib/models.js');\nconst { render } = require('./lib/controller.js');\nconsole.log(render(getUser(1)));\n",
+    "lib/models.js": "function getUser(id) {\n  return { id, name: 'ada' };\n}\nmodule.exports = { getUser };\n",
+    "lib/controller.js": "const { title } = require('./format.js');\nfunction render(user) {\n  return title(user);\n}\nmodule.exports = { render };\n",
+    "lib/format.js": "function title(user) {\n  return user.name.toUpperCase();\n}\nmodule.exports = { title };\n"
+  },
+  "brokenFiles": {
+    "lib/models.js": "function getUser(id) {\n  return { id, profile: { name: 'ada' } };\n}\nmodule.exports = { getUser };\n"
+  }
+}

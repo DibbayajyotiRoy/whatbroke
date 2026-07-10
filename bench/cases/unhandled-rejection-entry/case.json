@@ -1,0 +1,17 @@
+{
+  "name": "unhandled-rejection-entry",
+  "language": "node",
+  "culprits": [
+    "main.js"
+  ],
+  "argv": [
+    "node",
+    "main.js"
+  ],
+  "greenFiles": {
+    "main.js": "async function start() {\n  return 'ready';\n}\nstart().then((s) => console.log(s));\n"
+  },
+  "brokenFiles": {
+    "main.js": "async function start() {\n  throw new Error('boot sequence rejected');\n}\nstart().then((s) => console.log(s));\n"
+  }
+}

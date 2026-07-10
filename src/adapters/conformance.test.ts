@@ -21,7 +21,9 @@ import type {
 } from '../types.js';
 import { enrichFrames } from '../assemble.js';
 import { rankSuspects } from '../repro/suspects.js';
-import { pythonAdapter, goAdapter, selectAdapter } from './index.js';
+import { pythonAdapter, goAdapter, selectAdapter, registerAdapter } from './index.js';
+import { makeDeclarativeAdapter } from './declarative.js';
+import type { StackGrammar } from './grammar.js';
 
 const REPO = '/repo';
 
@@ -215,4 +217,120 @@ test('selectAdapter routes node even when a python file is vendored', () => {
     stdoutText: '',
   });
   assert.equal(adapter.id, 'node');
+});
+
+// ── Third-party grammar conformance (the extension gate) ─────────────────────
+//
+// Proof that a brand-new language needs ZERO core changes: define a
+// `StackGrammar` (pure data), wrap it with `makeDeclarativeAdapter`, register
+// it — and it flows through the exact parse → enrich → rank pipeline the
+// built-ins use. 'toylang' below is deliberately made up; if it passes, any
+// grammar built the same way passes. docs/adding-a-language.md walks a
+// third-party author through this example step by step.
+
+const toyGrammar: StackGrammar = {
+  id: 'toylang',
+  detect: {
+    commands: [/\btoyc\b/],
+    extensions: ['.toy'],
+    cwdFiles: ['toy.manifest'],
+    stderrMarkers: [/^!! crash:/m],
+  },
+  error: {
+    // Top-of-block header (Go-style): `!! crash: Name: message`.
+    header: /^!! crash: (?<name>[A-Za-z_]\w*): (?<message>.*)$/,
+    headerAfterFrames: false,
+  },
+  frame: {
+    // Two-line frames: a `-> func()` line, then an indented location line.
+    line: /^\s+in (?<file>\S+) line (?<line>\d+)$/,
+    funcLine: /^-> (?<func>[\w.]+)\(\)$/,
+    order: 'top-first',
+  },
+  userCode: { vendorPatterns: [/[\\/]toy_modules[\\/]/] },
+  crashKinds: [{ pattern: /^!! crash: OutOfGears:/m, kind: 'nonzero-exit' }],
+};
+
+const toyAdapter = makeDeclarativeAdapter(toyGrammar);
+
+const TOY_STDERR = `spinning up gizmo
+!! crash: GizmoJamError: spinner jammed after 3 spins
+-> spin_up()
+   in /repo/gizmo/spinner.toy line 12
+-> gear_mesh()
+   in /repo/toy_modules/gears.toy line 44
+-> boot()
+   in /repo/main.toy line 3
+`;
+
+test('toylang: third-party grammar parses two-line frames with zero core changes', () => {
+  const err = toyAdapter.parseError(TOY_STDERR);
+  assert.ok(err, 'expected a parsed toy crash');
+  assert.equal(err.name, 'GizmoJamError');
+  assert.equal(err.message, 'spinner jammed after 3 spins');
+  assert.equal(err.stack.length, 3);
+  // top-first order is preserved; funcLine names carry onto location lines.
+  assert.equal(err.stack[0]?.file, '/repo/gizmo/spinner.toy');
+  assert.equal(err.stack[0]?.line, 12);
+  assert.equal(err.stack[0]?.functionName, 'spin_up');
+  assert.equal(err.stack[0]?.isUserCode, true);
+  assert.equal(err.stack[1]?.isUserCode, false); // toy_modules/ is vendor
+  assert.equal(err.stack[2]?.file, '/repo/main.toy');
+  assert.equal(err.stack[2]?.functionName, 'boot');
+});
+
+test('toylang: culprit on stack AND changed ranks #1 through the shared moat', () => {
+  const err = toyAdapter.parseError(TOY_STDERR);
+  assert.ok(err);
+  err.stack = enrichFrames(err.stack, REPO, REPO);
+  const input = makeInput('toylang', err, ['gizmo/spinner.toy']);
+  const suspects = rankSuspects(input);
+  assert.ok(suspects.length > 0, 'expected suspects');
+  assert.equal(suspects[0]?.path, 'gizmo/spinner.toy');
+});
+
+test('toylang: classify upgrades the kind and honors declarative crashKinds', () => {
+  const err = toyAdapter.parseError(TOY_STDERR);
+  const crash = toyAdapter.classify({
+    exitCode: 1,
+    signal: null,
+    stderrText: TOY_STDERR,
+    error: err,
+  });
+  assert.ok(crash, 'nonzero exit must classify as a crash');
+  assert.equal(crash.kind, 'uncaught-exception'); // parsed error upgrades the kind
+
+  const gearsStderr = `!! crash: OutOfGears: gearbox empty
+-> boot()
+   in /repo/main.toy line 3
+`;
+  const gearsCrash = toyAdapter.classify({
+    exitCode: 3,
+    signal: null,
+    stderrText: gearsStderr,
+    error: toyAdapter.parseError(gearsStderr),
+  });
+  assert.ok(gearsCrash);
+  assert.equal(gearsCrash.kind, 'nonzero-exit'); // crashKinds override wins
+});
+
+test('toylang: registers and routes via the registry without disturbing the fallback', () => {
+  registerAdapter(toyAdapter);
+  const picked = selectAdapter({
+    command: { argv: ['toyc', 'run', 'main.toy'], cwd: REPO },
+    cwdEntries: ['main.toy', 'toy.manifest'],
+    fileExtensions: new Set(['.toy']),
+    stderrText: TOY_STDERR,
+    stdoutText: '',
+  });
+  assert.equal(picked.id, 'toylang');
+  // The node fallback still owns unrecognized crashes after registration.
+  const fallback = selectAdapter({
+    command: { argv: ['./mystery-binary'], cwd: REPO },
+    cwdEntries: [],
+    fileExtensions: new Set(),
+    stderrText: 'segfault at 0x0',
+    stdoutText: '',
+  });
+  assert.equal(fallback.id, 'node');
 });

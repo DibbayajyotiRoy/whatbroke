@@ -1,0 +1,18 @@
+{
+  "name": "caller-passes-numbers",
+  "language": "node",
+  "culprits": [
+    "main.js"
+  ],
+  "argv": [
+    "node",
+    "main.js"
+  ],
+  "greenFiles": {
+    "main.js": "const { sum } = require('./lib/sum.js');\nconsole.log(sum([{ value: 1 }, { value: 2 }]));\n",
+    "lib/sum.js": "module.exports = {\n  sum: (items) => items.reduce((acc, item) => acc + item.value.valueOf(), 0),\n};\n"
+  },
+  "brokenFiles": {
+    "main.js": "const { sum } = require('./lib/sum.js');\nconsole.log(sum([1, 2]));\n"
+  }
+}

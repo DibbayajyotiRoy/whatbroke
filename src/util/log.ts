@@ -47,8 +47,8 @@ export function makeStyle(enabled: boolean = colorEnabled()): Style {
   };
 }
 
-export function makeLogger(verbosity: Verbosity) {
-  const style = makeStyle();
+export function makeLogger(verbosity: Verbosity, opts?: { color?: boolean }) {
+  const style = makeStyle(opts?.color ?? colorEnabled());
   return {
     style,
     /** Print a pre-styled line verbatim (caller owns styling). */

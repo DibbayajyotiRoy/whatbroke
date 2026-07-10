@@ -42,8 +42,35 @@ export interface Bundle {
   repro: ReproInfo; // from 05
   redaction: RedactionReport; // filled by 06; empty pre-gate
 
+  /**
+   * The verbatim captured command + cwd, so `verify` (1.1) can re-run exactly
+   * what crashed — never anything a caller supplies (ADR-0002). Additive;
+   * bundles from before v0.3 omit it. argv elements pass the redaction gate.
+   */
+  command?: { argv: string[]; cwd: string };
+
+  /** Set by `verify` when this crash was re-run green (1.1 AC3). */
+  resolution?: { status: 'resolved'; at: string; commit: string };
+
+  /**
+   * Crash-history match (3.1): this failure's fingerprint was seen before.
+   * Derived locally from .whatbroke/index.json; never leaves the machine.
+   */
+  history?: HistoryMatch;
+
   /** Non-fatal collector failures (04). Never throws the pipeline. */
   collectorErrors: CollectorError[];
+}
+
+/** A prior occurrence of the same crash fingerprint (3.1). */
+export interface HistoryMatch {
+  fingerprint: string;
+  matchedBundleId: string;
+  matchedAt: string; // ISO-8601 createdAt of the matched bundle
+  occurrences: number;
+  resolvedBy?: { commit: string; filesTouched: string[] };
+  flaky?: boolean;
+  provenance: 'derived';
 }
 
 /** A Bundle that has passed the redaction gate (06). Sinks/readers accept only this. */
@@ -273,6 +300,8 @@ export interface CaptureResult {
   signal: string | null;
   crash: CrashSignal | null;
   logs: LogBuffer;
+  /** True when the signal termination was our own timeout kill (03). */
+  timedOut?: boolean;
 }
 
 // ─────────────────────────────────────────────────────────────────────────────

@@ -1,0 +1,19 @@
+{
+  "name": "wrong-arg-type-to-helper",
+  "language": "node",
+  "culprits": [
+    "lib/format.js"
+  ],
+  "argv": [
+    "node",
+    "main.js"
+  ],
+  "greenFiles": {
+    "main.js": "const { label } = require('./lib/format.js');\nconsole.log(label(7));\n",
+    "lib/format.js": "const { pad } = require('./pad.js');\nfunction label(id) {\n  return pad(String(id));\n}\nmodule.exports = { label };\n",
+    "lib/pad.js": "module.exports = { pad: (s) => s.padStart(4, '0') };\n"
+  },
+  "brokenFiles": {
+    "lib/format.js": "const { pad } = require('./pad.js');\nfunction label(id) {\n  return pad(id);\n}\nmodule.exports = { label };\n"
+  }
+}

@@ -1,0 +1,19 @@
+{
+  "name": "chain-culprit-mid",
+  "language": "node",
+  "culprits": [
+    "lib/parser.js"
+  ],
+  "argv": [
+    "node",
+    "main.js"
+  ],
+  "greenFiles": {
+    "main.js": "const { parse } = require('./lib/parser.js');\nconsole.log(parse('a,b,c'));\n",
+    "lib/parser.js": "const { scan } = require('./scanner.js');\nfunction parse(text) {\n  return scan(text).length;\n}\nmodule.exports = { parse };\n",
+    "lib/scanner.js": "function scan(input) {\n  return input.split(',');\n}\nmodule.exports = { scan };\n"
+  },
+  "brokenFiles": {
+    "lib/parser.js": "const { scan } = require('./scanner.js');\nfunction parse(text) {\n  return scan(text.tokens).length;\n}\nmodule.exports = { parse };\n"
+  }
+}
