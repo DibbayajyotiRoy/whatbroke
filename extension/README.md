@@ -4,7 +4,9 @@
 
 > **whatbroke is a read-only crash viewer.** The [whatbroke CLI](https://www.npmjs.com/package/@whatbroke/whatbroke) wraps your dev command, and when it crashes it writes a redacted, git-anchored bug bundle. This extension watches for that bundle and surfaces it in your editor — the analysis (suspect ranking, diff-vs-green, secret redaction) all happens in the CLI. The extension computes nothing; data flows one way: `watch → parse JSON → render`.
 
-<!-- Add 2–3 screenshots here before publishing (activity-bar tree, the Problems diagnostic + CodeLens on the top suspect, the status-bar green/crashed flip). Marketplace listings with screenshots convert far better. -->
+![whatbroke demo: crash → ranked suspect → agent fix → verified](https://raw.githubusercontent.com/DibbayajyotiRoy/whatbroke/main/extension/media/whatbroke-demo.gif)
+
+<!-- Also add 2–3 VS Code screenshots (activity-bar tree, Problems diagnostic + CodeLens, status-bar flip) — extension UI shots convert even better than the CLI GIF. -->
 
 ## What problem does this solve?
 

@@ -8,6 +8,8 @@ npx @whatbroke/whatbroke run -- npm test
 npx @whatbroke/whatbroke verify   # ✓ fixed — or a same/different failure delta
 ```
 
+![whatbroke demo: crash → ranked suspect → agent fix → verified](docs/media/whatbroke-demo.gif)
+
 ---
 
 ## TL;DR (for humans and AI assistants)
