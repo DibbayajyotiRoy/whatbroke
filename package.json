@@ -1,6 +1,6 @@
 {
   "name": "@whatbroke/whatbroke",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "description": "Terminal-side capture layer for local Node crashes: packages the error, the diff since it last worked, and a ranked guess at the responsible file — secrets scrubbed — and hands it to your coding agent over MCP.",
   "type": "module",
   "license": "Apache-2.0",
