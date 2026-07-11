@@ -3,6 +3,11 @@ dist/
 .whatbroke/
 *.log
 
+# Benchmark fixtures deliberately vendor tiny fake deps — those must ship,
+# or the bench green runs crash in CI on the incomplete fixture.
+!bench/cases/**/node_modules/
+!bench/cases/**/node_modules/**
+
 # Claude Code tooling config (auto-generated permission allowlists with local
 # absolute paths — tooling, not product code).
 .claude/
